@@ -21,4 +21,9 @@
             Configure jabber account
        <p>
          Keep in touch with remote devices, and with your friends, #
-         by configuring a jabber account.
+     <div .span4>
+      <h3>
+        <a href="@{PreferencesR}">
+          Preferences
+     <p>
+       Tune the behavior of git-annex.

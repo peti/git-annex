@@ -13,6 +13,7 @@
 
 /config ConfigurationR GET
 /config/repository RepositoriesR GET
+/config/preferences PreferencesR GET
 /config/xmpp XMPPR GET
 /config/xmpp/for/pairing XMPPForPairingR GET
 
