@@ -6,8 +6,4 @@
       <fieldset>
         ^{form}
         ^{webAppFormAuthToken}
-        <div .form-actions>
-          <button .btn .btn-primary type=submit>
-            Save Preferences
-          <a .btn href="@{ConfigurationR}">
-            Cancel
+        ^{buttons}

@@ -12,6 +12,7 @@ module Assistant.WebApp.Configurators.Preferences (
 ) where
 
 import Assistant.WebApp.Common
+import Assistant.WebApp.Html
 import qualified Annex
 import qualified Git
 import Config
@@ -39,10 +40,16 @@ prefsAForm def = PrefsForm
 	<*> areq (checkBoxField `withNote` debugnote)
 		"Enable debug logging" (Just $ debugEnabled def)
   where
-	diskreservenote = [whamlet|<br>Avoid downloading files from other repositories when there is too little free disk space.|]
-	numcopiesnote = [whamlet|<br>Only drop a file after verifying that other repositories contain this many copies.|]
-	debugnote = [whamlet|<a href="@{LogR}">View Log</a>|]
-	autostartnote = [whamlet|Start the git-annex assistant at boot or on login.|]
+	diskreservenote = whtml $ do
+		hbr
+		hspan "Avoid downloading files from other repositories when there is too little free disk space."
+	numcopiesnote = whtml $ do
+		hbr
+		hspan "Only drop a file after verifying that other repositories contain this many copies."
+	debugnote = toWidget $ \render ->
+		hspan $ "View Log" ==> render LogR []
+	autostartnote = whtml $
+		hspan "Start the git-annex assistant at boot or on login."
 
 	positiveIntField = check isPositive intField
 	  where
@@ -82,7 +89,7 @@ storePrefs p = do
 		if debugEnabled p then DEBUG else WARNING
 
 getPreferencesR :: Handler RepHtml
-getPreferencesR = page "Preferences" (Just Configuration) $ do
+getPreferencesR = page title (Just Configuration) $ do
 	((result, form), enctype) <- lift $ do
 		current <- runAnnex undefined getPrefs
 		runFormGet $ renderBootstrap $ prefsAForm current
@@ -90,7 +97,11 @@ getPreferencesR = page "Preferences" (Just Configuration) $ do
 		FormSuccess new -> lift $ do
 			runAnnex undefined $ storePrefs new
 			redirect ConfigurationR
-		_ -> $(widgetFile "configurators/preferences")
+		_ -> stdForm enctype form buttons -- TODO add heroUnit title
+  where
+	title = "Preferences"
+	buttons = toWidget $ \render ->
+		"Save Preferences" <>|<> render ConfigurationR []
 
 inAutoStartFile :: Annex Bool
 inAutoStartFile = do
