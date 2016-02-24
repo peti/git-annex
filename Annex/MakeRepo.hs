@@ -15,7 +15,6 @@ import qualified Git.Command
 import qualified Git.Branch
 import qualified Annex
 import Annex.UUID
-import Annex.Direct
 import Types.StandardGroups
 import Logs.PreferredContent
 import qualified Annex.Branch
@@ -57,13 +56,10 @@ initRepo True primary_assistant_repo dir desc mgroup = inDir dir $ do
 			, Param "-m"
 			, Param "created repository"
 			]
-	{- Repositories directly managed by the assistant use direct mode.
-	 - 
-	 - Automatic gc is disabled, as it can be slow. Insted, gc is done
+	{- Automatic gc is disabled, as it can be slow. Instead, gc is done
 	 - once a day.
 	 -}
 	when primary_assistant_repo $ do
-		setDirect True
 		inRepo $ Git.Command.run
 			[Param "config", Param "gc.auto", Param "0"]
 	getUUID

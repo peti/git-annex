@@ -11,7 +11,3 @@ Notice that, since annexed files are represented by symlinks,
 the symlink will break when the file is moved into a subdirectory.
 But, git-annex will fix this up for you when you commit --
 it has a pre-commit hook that watches for and corrects broken symlinks.
-
-(Note that if a repository is in direct mode, you can't run normal git
-commands in it. Instead, just move the files using non-git commands, and
-`git annex add` and `git annex sync`.)

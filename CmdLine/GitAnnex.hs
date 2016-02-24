@@ -89,11 +89,8 @@ import qualified Command.ImportFeed
 import qualified Command.RmUrl
 import qualified Command.Import
 import qualified Command.Map
-import qualified Command.Direct
-import qualified Command.Indirect
 import qualified Command.Upgrade
 import qualified Command.Forget
-import qualified Command.Proxy
 import qualified Command.DiffDriver
 import qualified Command.Smudge
 import qualified Command.Undo
@@ -197,11 +194,8 @@ cmds testoptparser testrunner =
 	, Command.Status.cmd
 	, Command.Migrate.cmd
 	, Command.Map.cmd
-	, Command.Direct.cmd
-	, Command.Indirect.cmd
 	, Command.Upgrade.cmd
 	, Command.Forget.cmd
-	, Command.Proxy.cmd
 	, Command.DiffDriver.cmd
 	, Command.Smudge.cmd
 	, Command.Undo.cmd

@@ -31,7 +31,6 @@ import Utility.ThreadScheduler
 import qualified Assistant.Threads.Watcher as Watcher
 import Utility.Batch
 import Utility.NotificationBroadcaster
-import Config
 import Utility.HumanTime
 import Utility.Tense
 import Git.Repair
@@ -200,8 +199,7 @@ dailyCheck urlrenderer = do
 		liftAnnex $ warning msg
 		void $ addAlert $ sanityCheckFixAlert msg
 	addsymlink file s = do
-		isdirect <- liftAnnex isDirect
-		Watcher.runHandler (Watcher.onAddSymlink isdirect) file s
+		Watcher.runHandler Watcher.onAddSymlink file s
 		insanity $ "found unstaged symlink: " ++ file
 
 hourlyCheck :: Assistant ()

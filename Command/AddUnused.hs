@@ -13,8 +13,7 @@ import Annex.Ingest
 import Command.Unused (withUnusedMaps, UnusedMaps(..), startUnused)
 
 cmd :: Command
-cmd = notDirect $ 
-	command "addunused" SectionMaintenance 
+cmd = command "addunused" SectionMaintenance 
 		"add back unused files"
 		(paramRepeating paramNumRange) (withParams seek)
 

@@ -100,7 +100,7 @@ subdirectories).
 * `status [path ...]`
 
   Similar to `git status --short`, displays the status of the files in the
-  working tree. Particularly useful in direct mode.
+  working tree.
 
   See [[git-annex-status]](1) for details.
 
@@ -281,19 +281,6 @@ subdirectories).
   made back to the git-annex branch.
   
   See [[git-annex-vicfg]](1) for details.
-
-* `direct`
-
-  Switches a repository to use direct mode, where rather than symlinks to
-  files, the files are directly present in the repository.
-  
-  See [[git-annex-direct]](1) for details.
-
-* `indirect`
-
-  Switches a repository back from direct mode to the default, indirect mode.
-  
-  See [[git-annex-indirect]](1) for details.
 
 # REPOSITORY MAINTENANCE COMMANDS
 
@@ -607,14 +594,6 @@ subdirectories).
   Lists files in a git ref.
   
   See [[git-annex-findref]](1) for details.
-
-* `proxy -- git cmd [options]`
-
-  Only useful in a direct mode repository, this runs the specified git
-  command with a temporary work tree, and updates the working tree to
-  reflect any changes staged or committed by the git command.
-  
-  See [[git-annex-proxy]](1) for details.
 
 * `resolvemerge`
 
@@ -933,8 +912,8 @@ Here are all the supported configuration settings.
   Makes the watch and assistant commands delay for the specified number of
   seconds before adding a newly created file to the annex. Normally this
   is not needed, because they already wait for all writers of the file
-  to close it. On Mac OSX, when not using direct mode this defaults to
-  1 second, to work around a bad interaction with software there.
+  to close it. On Mac OSX, this defaults to 1 second, to work
+  around a bad interaction with software there.
 
 * `annex.expireunused`
 
@@ -994,12 +973,6 @@ Here are all the supported configuration settings.
 * `annex.version`
 
   Automatically maintained, and used to automate upgrades between versions.
-
-* `annex.direct`
-
-  Set to true when the repository is in direct mode. Should not be set
-  manually; use the "git annex direct" and "git annex indirect" commands
-  instead.
 
 * `annex.crippledfilesystem`
 

@@ -10,7 +10,6 @@ module Annex.Fixup where
 import Git.Types
 import Git.Config
 import Types.GitConfig
-import qualified Git.Construct as Construct
 import qualified Git.BuildVersion
 import Utility.Path
 import Utility.SafeCommand
@@ -29,10 +28,7 @@ import qualified Data.Map as M
 fixupRepo :: Repo -> GitConfig -> IO Repo
 fixupRepo r c = do
 	let r' = disableWildcardExpansion r
-	r'' <- fixupSubmodule r' c
-	if annexDirect c
-		then fixupDirect r''
-		else return r''
+	fixupSubmodule r' c
 
 {- Disable git's built-in wildcard expansion, which is not wanted
  - when using it as plumbing by git-annex. -}
@@ -41,23 +37,6 @@ disableWildcardExpansion r
 	| Git.BuildVersion.older "1.8.1" = r
 	| otherwise = r
 		{ gitGlobalOpts = gitGlobalOpts r ++ [Param "--literal-pathspecs"] }
-
-{- Direct mode repos have core.bare=true, but are not really bare.
- - Fix up the Repo to be a non-bare repo, and arrange for git commands
- - run by git-annex to be passed parameters that override this setting. -}
-fixupDirect :: Repo -> IO Repo
-fixupDirect r@(Repo { location = l@(Local { gitdir = d, worktree = Nothing }) }) = do
-	let r' = r
-		{ location = l { worktree = Just (parentDir d) }
-		, gitGlobalOpts = gitGlobalOpts r ++
-			[ Param "-c"
-			, Param $ coreBare ++ "=" ++ boolConfig False
-			]
-		}
-	-- Recalc now that the worktree is correct.
-	rs' <- Construct.fromRemotes r'
-	return $ r' { remotes = rs' }
-fixupDirect r = return r
 
 {- Submodules have their gitdir containing ".git/modules/", and
  - have core.worktree set, and also have a .git file in the top
@@ -70,8 +49,8 @@ fixupDirect r = return r
  - submodule is mounted.
  -
  - When the filesystem doesn't support symlinks, we cannot make .git
- - into a symlink. But we don't need too, since the repo will use direct
- - mode, In this case, we merely adjust the Repo so that
+ - into a symlink. But we don't need too, since symlinks won't be followed
+ - anyway. In this case, we merely adjust the Repo so that
  - symlinks to objects that get checked in will be in the right form.
  -}
 fixupSubmodule :: Repo -> GitConfig -> IO Repo

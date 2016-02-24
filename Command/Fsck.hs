@@ -15,8 +15,6 @@ import qualified Remote
 import qualified Types.Backend
 import qualified Backend
 import Annex.Content
-import qualified Annex.Content.Direct as Direct
-import Annex.Direct
 import Annex.Perms
 import Annex.Link
 import Logs.Location
@@ -27,7 +25,6 @@ import Annex.NumCopies
 import Annex.UUID
 import Annex.ReplaceFile
 import Utility.DataUnits
-import Config
 import Utility.HumanTime
 import Utility.CopyFile
 import Git.FilePath
@@ -123,7 +120,7 @@ perform key file backend numcopies = do
 		, verifyAssociatedFiles key keystatus file
 		, verifyWorkTree key file
 		, checkKeySize key keystatus
-		, checkBackend backend key keystatus (Just file)
+		, checkBackend backend key keystatus
 		, checkKeyNumCopies key (Just file) numcopies
 		]
 
@@ -186,7 +183,7 @@ performKey key backend numcopies = do
 	check
 		[ verifyLocationLog key keystatus (key2file key)
 		, checkKeySize key keystatus
-		, checkBackend backend key keystatus Nothing
+		, checkBackend backend key keystatus
 		, checkKeyNumCopies key Nothing numcopies
 		]
 
@@ -218,23 +215,18 @@ verifyLocationLog key keystatus desc = do
 	present <- if isKeyUnlocked keystatus
 		then liftIO (doesFileExist obj)
 		else inAnnex key
-	direct <- isDirect
 	u <- getUUID
 	
 	{- Since we're checking that a key's object file is present, throw
 	 - in a permission fixup here too. -}
-	when (present && not direct) $ void $ tryIO $
+	when (present) $ void $ tryIO $
 		if isKeyUnlocked keystatus
 			then thawContent obj
 			else freezeContent obj
 	whenM (liftIO $ doesDirectoryExist $ parentDir obj) $
 		freezeContentDir obj
 
-	{- In direct mode, modified files will show up as not present,
-	 - but that is expected and not something to do anything about. -}
-	if direct && not present
-		then return True
-		else verifyLocationLog' key desc present u (logChange key u)
+	verifyLocationLog' key desc present u (logChange key u)
 
 verifyLocationLogRemote :: Key -> String -> Remote -> Bool -> Annex Bool
 verifyLocationLogRemote key desc remote present =
@@ -264,58 +256,39 @@ verifyLocationLog' key desc present u updatestatus = do
 
 {- Verifies the associated file records. -}
 verifyAssociatedFiles :: Key -> KeyStatus -> FilePath -> Annex Bool
-verifyAssociatedFiles key keystatus file = do
-	ifM isDirect (godirect, goindirect)
-	return True
-  where
-	godirect = do
-		fs <- Direct.addAssociatedFile key file
-		forM_ fs $ \f -> 
-			unlessM (liftIO $ doesFileExist f) $
-				void $ Direct.removeAssociatedFile key f
-	goindirect = case keystatus of
-		KeyUnlocked -> do
-			f <- inRepo $ toTopFilePath file
-			afs <- Database.Keys.getAssociatedFiles key
-			unless (getTopFilePath f `elem` map getTopFilePath afs) $
-				Database.Keys.addAssociatedFile key f
-		_ -> return ()
+verifyAssociatedFiles key keystatus file = case keystatus of
+	KeyUnlocked -> do
+		f <- inRepo $ toTopFilePath file
+		afs <- Database.Keys.getAssociatedFiles key
+		unless (getTopFilePath f `elem` map getTopFilePath afs) $
+			Database.Keys.addAssociatedFile key f
+		return True
+	_ -> return True
 
 verifyWorkTree :: Key -> FilePath -> Annex Bool
 verifyWorkTree key file = do
-	ifM isDirect ( godirect, goindirect )
-	return True
-  where
-	{- Ensures that files whose content is available are in direct mode. -}
-	godirect = whenM (isJust <$> isAnnexLink file) $ do
-		v <- toDirectGen key file
-		case v of
-			Nothing -> noop
-			Just a -> do
-				showNote "fixing direct mode"
-				a
 	{- Make sure that a pointer file is replaced with its content,
 	 - when the content is available. -}
-	goindirect = do
-		mk <- liftIO $ isPointerFile file
-		case mk of
-			Just k | k == key -> whenM (inAnnex key) $ do
-				showNote "fixing worktree content"
-				replaceFile file $ \tmp -> 
-					ifM (annexThin <$> Annex.getGitConfig)
-						( void $ linkFromAnnex key tmp
-						, do
-							obj <- calcRepo $ gitAnnexLocation key
-							void $ checkedCopyFile key obj tmp
-							thawContent tmp
-						)
-				Database.Keys.storeInodeCaches key [file]
-			_ -> return ()
+	mk <- liftIO $ isPointerFile file
+	case mk of
+		Just k | k == key -> whenM (inAnnex key) $ do
+			showNote "fixing worktree content"
+			replaceFile file $ \tmp -> 
+				ifM (annexThin <$> Annex.getGitConfig)
+					( void $ linkFromAnnex key tmp
+					, do
+						obj <- calcRepo $ gitAnnexLocation key
+						void $ checkedCopyFile key obj tmp
+						thawContent tmp
+					)
+			Database.Keys.storeInodeCaches key [file]
+		_ -> return ()
+	return True
 
 {- The size of the data for a key is checked against the size encoded in
  - the key's metadata, if available.
  -
- - Not checked when a file is unlocked, or in direct mode.
+ - Not checked when a file is unlocked.
  -}
 checkKeySize :: Key -> KeyStatus -> Annex Bool
 checkKeySize _ KeyUnlocked = return True
@@ -357,26 +330,15 @@ checkKeySizeOr bad key file = case keySize key of
  - thus when the user modifies the file, the object will be modified and
  - not pass the check, and we don't want to find an error in this case.
  - So, skip the check if the key is unlocked and modified.
- -
- - In direct mode this is not done if the file has clearly been modified,
- - because modification of direct mode files is allowed. It's still done
- - if the file does not appear modified, to catch disk corruption, etc.
  -}
-checkBackend :: Backend -> Key -> KeyStatus -> Maybe FilePath -> Annex Bool
-checkBackend backend key keystatus mfile = go =<< isDirect
-  where
-	go False = do
-		content <- calcRepo $ gitAnnexLocation key
-		ifM (pure (isKeyUnlocked keystatus) <&&> (not <$> isUnmodified key content))
-			( nocheck
-			, checkBackendOr badContent backend key content
-			)
-	go True = maybe nocheck checkdirect mfile
-	checkdirect file = ifM (Direct.goodContent key file)
-		( checkBackendOr' (badContentDirect file) backend key file
-			(Direct.goodContent key file)
-		, nocheck
+checkBackend :: Backend -> Key -> KeyStatus -> Annex Bool
+checkBackend backend key keystatus = do
+	content <- calcRepo $ gitAnnexLocation key
+	ifM (pure (isKeyUnlocked keystatus) <&&> (not <$> isUnmodified key content))
+		( nocheck
+		, checkBackendOr badContent backend key content
 		)
+  where
 	nocheck = return True
 
 checkBackendRemote :: Backend -> Key -> Remote -> Maybe FilePath -> Annex Bool
@@ -390,7 +352,7 @@ checkBackendOr bad backend key file =
 
 -- The postcheck action is run after the content is verified,
 -- in order to detect situations where the file is changed while being
--- verified (particularly in direct mode).
+-- verified.
 checkBackendOr' :: (Key -> Annex String) -> Backend -> Key -> FilePath -> Annex Bool -> Annex Bool
 checkBackendOr' bad backend key file postcheck =
 	case Types.Backend.verifyKeyContent backend of
@@ -454,14 +416,6 @@ badContent :: Key -> Annex String
 badContent key = do
 	dest <- moveBad key
 	return $ "moved to " ++ dest
-
-{- Bad content is left where it is, but we touch the file, so it'll be
- - committed to a new key. -}
-badContentDirect :: FilePath -> Key -> Annex String
-badContentDirect file key = do
-	void $ liftIO $ catchMaybeIO $ touchFile file
-	logStatus key InfoMissing
-	return "left in place for you to examine"
 
 {- Bad content is dropped from the remote. We have downloaded a copy
  - from the remote to a temp file already (in some cases, it's just a
@@ -618,12 +572,9 @@ isKeyUnlocked KeyLocked = False
 isKeyUnlocked KeyMissing = False
 
 getKeyStatus :: Key -> Annex KeyStatus
-getKeyStatus key = ifM isDirect
-	( return KeyUnlocked
-	, catchDefaultIO KeyMissing $ do
-		unlocked <- not . null <$> Database.Keys.getAssociatedFiles key
-		return $ if unlocked then KeyUnlocked else KeyLocked
-	)
+getKeyStatus key = catchDefaultIO KeyMissing $ do
+	unlocked <- not . null <$> Database.Keys.getAssociatedFiles key
+	return $ if unlocked then KeyUnlocked else KeyLocked
 
 getKeyFileStatus :: Key -> FilePath -> Annex KeyStatus
 getKeyFileStatus key file = do

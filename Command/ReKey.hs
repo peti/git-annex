@@ -21,11 +21,10 @@ import Annex.InodeSentinal
 import Utility.InodeCache
 
 cmd :: Command
-cmd = notDirect $ 
-	command "rekey" SectionPlumbing
-		"change keys used for files"
-		(paramRepeating $ paramPair paramPath paramKey)
-		(withParams seek)
+cmd = command "rekey" SectionPlumbing
+	"change keys used for files"
+	(paramRepeating $ paramPair paramPath paramKey)
+	(withParams seek)
 
 seek :: CmdParams -> CommandSeek
 seek = withPairs start

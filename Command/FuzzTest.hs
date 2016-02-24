@@ -155,7 +155,6 @@ data FuzzAction
 	= FuzzAdd FuzzFile
 	| FuzzDelete FuzzFile
 	| FuzzMove FuzzFile FuzzFile
-	| FuzzModify FuzzFile
 	| FuzzDeleteDir FuzzDir
 	| FuzzMoveDir FuzzDir FuzzDir
 	| FuzzPause Delay
@@ -166,7 +165,6 @@ instance Arbitrary FuzzAction where
 		[ (50, FuzzAdd <$> arbitrary)
 		, (50, FuzzDelete <$> arbitrary)
 		, (10, FuzzMove <$> arbitrary <*> arbitrary)
-		, (10, FuzzModify <$> arbitrary)
 		, (10, FuzzDeleteDir <$> arbitrary)
 		, (10, FuzzMoveDir <$> arbitrary <*> arbitrary)
 		, (10, FuzzPause <$> arbitrary)
@@ -180,9 +178,6 @@ runFuzzAction (FuzzAdd (FuzzFile f)) = liftIO $ do
 runFuzzAction (FuzzDelete (FuzzFile f)) = liftIO $ nukeFile f
 runFuzzAction (FuzzMove (FuzzFile src) (FuzzFile dest)) = liftIO $
 	rename src dest
-runFuzzAction (FuzzModify (FuzzFile f)) = whenM isDirect $ liftIO $ do
-	n <- getStdRandom random :: IO Int
-	appendFile f $ show n ++ "\n"
 runFuzzAction (FuzzDeleteDir (FuzzDir d)) = liftIO $
 	removeDirectoryRecursive d
 runFuzzAction (FuzzMoveDir (FuzzDir src) (FuzzDir dest)) = liftIO $
@@ -216,9 +211,6 @@ genFuzzAction = do
 		FuzzDeleteDir _ -> do
 			d <- liftIO existingDir
 			maybe genFuzzAction (return . FuzzDeleteDir) d
-		FuzzModify _ -> do
-			f <- liftIO $ existingFile 0 ""
-			maybe genFuzzAction (return . FuzzModify) f
 		FuzzPause _ -> return tmpl
 
 existingFile :: Int -> FilePath -> IO (Maybe FuzzFile)

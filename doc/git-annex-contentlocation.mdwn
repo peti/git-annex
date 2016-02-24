@@ -12,10 +12,6 @@ This plumbing-level command looks up filename used to store the content
 of a key. The filename is output to stdout. If the key's content is not
 present in the local repository, nothing is output, and it exits nonzero.
 
-Note that in direct mode, the file will typically be in the git work
-tree, and while its content should correspond to the key, the file
-could become modified at any time after git-annex checks it.
-
 # OPTIONS
 
 * `--batch`

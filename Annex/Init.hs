@@ -20,7 +20,6 @@ module Annex.Init (
 import Annex.Common
 import qualified Annex
 import qualified Git
-import qualified Git.LsFiles
 import qualified Git.Config
 import qualified Git.Objects
 import qualified Annex.Branch
@@ -30,13 +29,11 @@ import Types.TrustLevel
 import Annex.Version
 import Annex.Difference
 import Annex.UUID
-import Annex.Link
-import Config
-import Annex.Direct
 import Annex.Environment
 import Annex.Hook
 import Annex.InodeSentinal
 import Upgrade
+import Config
 import Annex.Perms
 import qualified Database.Keys
 #ifndef mingw32_HOST_OS
@@ -92,15 +89,6 @@ initialize' mversion = do
 	whenM versionSupportsUnlockedPointers $ do
 		configureSmudgeFilter
 		Database.Keys.scanAssociatedFiles
-	ifM (crippledFileSystem <&&> (not <$> isBare) <&&> (not <$> versionSupportsUnlockedPointers))
-		( do
-			enableDirectMode
-			setDirect True
-		-- Handle case where this repo was cloned from a
-		-- direct mode repo
-		, unlessM isBare
-			switchHEADBack
-		)
 	createInodeSentinalFile False
 
 uninitialize :: Annex ()
@@ -230,15 +218,6 @@ checkFifoSupport = unlessM probeFifoSupport $ do
 	warning "Detected a filesystem without fifo support."
 	warning "Disabling ssh connection caching."
 	setConfig (annexConfig "sshcaching") (Git.Config.boolConfig False)
-
-enableDirectMode :: Annex ()
-enableDirectMode = unlessM isDirect $ do
-	warning "Enabling direct mode."
-	top <- fromRepo Git.repoPath
-	(l, clean) <- inRepo $ Git.LsFiles.inRepo [top]
-	forM_ l $ \f ->
-		maybe noop (`toDirect` f) =<< isAnnexLink f
-	void $ liftIO clean
 
 checkSharedClone :: Annex Bool
 checkSharedClone = inRepo Git.Objects.isSharedClone

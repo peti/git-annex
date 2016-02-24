@@ -17,7 +17,7 @@ import Annex.View
 import Logs.View
 
 cmd :: Command
-cmd = notBareRepo $ notDirect $
+cmd = notBareRepo $
 	command "view" SectionMetaData "enter a view branch"
 		paramView (withParams seek)
 

@@ -24,7 +24,6 @@ import CmdLine.Batch as ReExported
 import Options.Applicative as ReExported hiding (command)
 import qualified Git
 import Annex.Init
-import Config
 import Utility.Daemon
 
 {- Generates a normal Command -}
@@ -99,10 +98,6 @@ commonChecks = [repoExists]
 
 repoExists :: CommandCheck
 repoExists = CommandCheck 0 ensureInitialized
-
-notDirect :: Command -> Command
-notDirect = addCheck $ whenM isDirect $
-	error "You cannot run this command in a direct mode repository."
 
 notBareRepo :: Command -> Command
 notBareRepo = addCheck $ whenM (fromRepo Git.repoIsLocalBare) $

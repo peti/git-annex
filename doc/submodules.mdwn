@@ -5,9 +5,7 @@ Git normally makes a `.git` **file** in a
 submodule, that points to the real git repository under `.git/modules/`.
 This presents problems for git-annex. So, when used in a submodule,
 git-annex will automatically replace the `.git` file with a symlink
-pointing at the git repository. (When the filesystem doesn't support
-symlinks, direct mode is used, and submodules are supported in that
-setup too.)
+pointing at the git repository.
 
 With that taken care of, git-annex should work ok in submodules. Although
 this is a new and somewhat experimental feature.

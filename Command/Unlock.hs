@@ -22,7 +22,7 @@ editcmd :: Command
 editcmd = mkcmd "edit" "same as unlock"
 
 mkcmd :: String -> String -> Command
-mkcmd n d = notDirect $ withGlobalOptions annexedMatchingOptions $
+mkcmd n d = withGlobalOptions annexedMatchingOptions $
 	command n SectionCommon d paramPaths (withParams seek)
 
 seek :: CmdParams -> CommandSeek

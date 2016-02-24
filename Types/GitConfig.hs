@@ -36,7 +36,6 @@ data GitConfig = GitConfig
 	, annexUUID :: UUID
 	, annexNumCopies :: Maybe NumCopies
 	, annexDiskReserve :: Integer
-	, annexDirect :: Bool
 	, annexBackends :: [String]
 	, annexQueueSize :: Maybe Int
 	, annexBloomCapacity :: Maybe Int
@@ -83,7 +82,6 @@ extractGitConfig r = GitConfig
 	, annexNumCopies = NumCopies <$> getmayberead (annex "numcopies")
 	, annexDiskReserve = fromMaybe onemegabyte $
 		readSize dataUnits =<< getmaybe (annex "diskreserve")
-	, annexDirect = getbool (annex "direct") False
 	, annexBackends = getwords (annex "backends")
 	, annexQueueSize = getmayberead (annex "queuesize")
 	, annexBloomCapacity = getmayberead (annex "bloomcapacity")

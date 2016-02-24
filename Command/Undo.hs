@@ -9,7 +9,6 @@ module Command.Undo where
 
 import Command
 import Config
-import Annex.Direct
 import Annex.CatFile
 import Git.DiffTree
 import Git.FilePath
@@ -37,9 +36,7 @@ seek ps = do
 
 	-- Committing staged changes before undo allows later
 	-- undoing the undo. It would be nicer to only commit staged
-	-- changes to the specified files, rather than all staged changes,
-	-- but that is difficult to do; a partial git-commit can't be done 
-	-- in direct mode.
+	-- changes to the specified files, rather than all staged changes.
 	void $ Command.Sync.commitStaged Git.Branch.ManualCommit
 		"commit before undo"
 	
@@ -69,16 +66,10 @@ perform p = do
 
 	forM_ removals $ \di -> do
 		f <- mkrel di
-		whenM isDirect $
-			maybe noop (`removeDirect` f)
-				=<< catKey (srcsha di)
 		liftIO $ nukeFile f
 
 	forM_ adds $ \di -> do
 		f <- mkrel di
 		inRepo $ Git.run [Param "checkout", Param "--", File f]
-		whenM isDirect $
-			maybe noop (`toDirect` f)
-				=<< catKey (dstsha di)
 
 	next $ liftIO cleanup

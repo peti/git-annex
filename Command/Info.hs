@@ -28,7 +28,6 @@ import Logs.Trust
 import Logs.Location
 import Annex.NumCopies
 import Remote
-import Config
 import Utility.Percentage
 import Logs.Transfer
 import Types.TrustLevel
@@ -182,8 +181,7 @@ selStats fast_stats slow_stats = do
  -}
 global_fast_stats :: [Stat]
 global_fast_stats = 
-	[ repository_mode
-	, repo_list Trusted
+	[ repo_list Trusted
 	, repo_list SemiTrusted
 	, repo_list UnTrusted
 	, transfer_list
@@ -262,16 +260,6 @@ showStat s = maybe noop calc =<< s
 	calc (desc, a) = do
 		(lift . showHeader) desc
 		lift . showRaw =<< a
-
-repository_mode :: Stat
-repository_mode = simpleStat "repository mode" $ lift $
-	ifM isDirect 
-		( return "direct"
-		, ifM (fromRepo Git.repoIsLocalBare)
-			( return "bare"
-			, return "indirect"
-			)
-		)
 
 repo_list :: TrustLevel -> Stat
 repo_list level = stat n $ nojson $ lift $ do

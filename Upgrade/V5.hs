@@ -8,21 +8,17 @@
 module Upgrade.V5 where
 
 import Annex.Common
-import qualified Annex
 import Config
 import Annex.InodeSentinal
 import Annex.Link
-import Annex.Direct
 import Annex.Content
 import Annex.CatFile
 import qualified Database.Keys
-import qualified Annex.Content.Direct as Direct
 import qualified Git
 import qualified Git.LsFiles
 import qualified Git.Branch
 import Git.FilePath
 import Git.FileMode
-import Git.Config
 import Utility.InodeCache
 
 upgrade :: Bool -> Annex Bool
@@ -30,33 +26,12 @@ upgrade automatic = do
 	unless automatic $
 		showAction "v5 to v6"
 	Database.Keys.scanAssociatedFiles
-	whenM isDirect $ do
-		{- Direct mode makes the same tradeoff of using less disk
-		 - space, with less preservation of old versions of files
-		 - as does annex.thin. -}
-		setConfig (annexConfig "thin") (boolConfig True)
-		Annex.changeGitConfig $ \c -> c { annexThin = True }
-		{- Since upgrade from direct mode changes how files
-		 - are represented in git, commit any changes in the
-		 - work tree first. -}
-		whenM stageDirect $ do
-			unless automatic $
-				showAction "committing first"
-			upgradeDirectCommit automatic
-				"commit before upgrade to annex.version 6"
-		setDirect False
-		upgradeDirectWorkTree
-		removeDirectCruft
-		showLongNote "Upgraded repository out of direct mode."
-		showLongNote "Changes have been staged for all annexed files in this repository; you should run `git commit` to commit these changes."
-		showLongNote "Any other clones of this repository that use direct mode need to be upgraded now, too."
 	configureSmudgeFilter
 	-- Inode sentinal file was only used in direct mode and when
 	-- locking down files as they were added. In v6, it's used more
 	-- extensively, so make sure it exists, since old repos that didn't
 	-- use direct mode may not have created it.
-	unlessM (isDirect) $
-		createInodeSentinalFile True
+	createInodeSentinalFile True
 	return True
 
 upgradeDirectCommit :: Bool -> String -> Annex ()
@@ -106,11 +81,3 @@ upgradeDirectWorkTree = do
 	writepointer f k = liftIO $ do
 		nukeFile f
 		writeFile f (formatPointer k)
-
-{- Remove all direct mode bookkeeping files. -}
-removeDirectCruft :: Annex ()
-removeDirectCruft = mapM_ go =<< getKeysPresent InAnywhere
-  where
-	go k = do
-		Direct.removeInodeCache k
-		Direct.removeAssociatedFiles k

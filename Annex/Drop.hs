@@ -16,8 +16,6 @@ import qualified Remote
 import qualified Command.Drop
 import Command
 import Annex.Wanted
-import Config
-import Annex.Content.Direct
 import qualified Database.Keys
 import Git.FilePath
 
@@ -48,12 +46,9 @@ type Reason = String
  -}
 handleDropsFrom :: [UUID] -> [Remote] -> Reason -> Bool -> Key -> AssociatedFile -> [VerifiedCopy] -> (CommandStart -> CommandCleanup) -> Annex ()
 handleDropsFrom locs rs reason fromhere key afile preverified runner = do
-	l <- ifM isDirect
-		( associatedFilesRelative key
-		, do
-			g <- Annex.gitRepo
-			map (`fromTopFilePath` g) <$> Database.Keys.getAssociatedFiles key
-		)
+	l <- do
+		g <- Annex.gitRepo
+		map (`fromTopFilePath` g) <$> Database.Keys.getAssociatedFiles key
 	let fs = case afile of
 		Just f -> nub (f : l)
 		Nothing -> l

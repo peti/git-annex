@@ -14,8 +14,6 @@ in the working tree.
 Show files that are not checked into git (?), deleted (D),
 modified (M), added but not committed (A), and type changed/unlocked (T).
 
-Particularly useful in direct mode.
-
 # OPTIONS
 
 * `--json`

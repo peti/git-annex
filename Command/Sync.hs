@@ -24,7 +24,6 @@ import qualified Annex
 import qualified Annex.Branch
 import qualified Remote
 import qualified Types.Remote as Remote
-import Annex.Direct
 import Annex.Hook
 import qualified Git.Command
 import qualified Git.LsFiles as LsFiles
@@ -33,7 +32,6 @@ import qualified Git.Types as Git
 import qualified Git.Ref
 import qualified Git
 import qualified Remote.Git
-import Config
 import Annex.Wanted
 import Annex.Content
 import Command.Get (getKey')
@@ -147,7 +145,7 @@ prepMerge :: Annex ()
 prepMerge = Annex.changeDirectory =<< fromRepo Git.repoPath
 
 syncBranch :: Git.Ref -> Git.Ref
-syncBranch = Git.Ref.under "refs/heads/synced" . fromDirectBranch
+syncBranch = Git.Ref.under "refs/heads/synced"
 
 remoteBranch :: Remote -> Git.Ref -> Git.Ref
 remoteBranch remote = Git.Ref.underBase $ "refs/remotes/" ++ Remote.name remote
@@ -182,19 +180,12 @@ commit o = stopUnless shouldcommit $ next $ next $ do
 	commitmessage <- maybe commitMsg return (messageOption o)
 	showStart "commit" ""
 	Annex.Branch.commit "update"
-	ifM isDirect
-		( do
-			void stageDirect
-			void preCommitDirect
-			commitStaged Git.Branch.ManualCommit commitmessage
-		, do
-			inRepo $ Git.Branch.commitQuiet Git.Branch.ManualCommit
-				[ Param "-a"
-				, Param "-m"
-				, Param commitmessage
-				]
-			return True
-		)
+	inRepo $ Git.Branch.commitQuiet Git.Branch.ManualCommit
+		[ Param "-a"
+		, Param "-m"
+		, Param commitmessage
+		]
+	return True
   where
 	shouldcommit = pure (commitOption o)
 		<&&> (annexAutoCommit <$> Annex.getGitConfig)
@@ -238,16 +229,10 @@ pushLocal b = do
 	updateSyncBranch b
 	stop
 
+-- Update the sync branch to match the new state of the branch
 updateSyncBranch :: Maybe Git.Ref -> Annex ()
 updateSyncBranch Nothing = noop
-updateSyncBranch (Just branch) = do
-	-- Update the sync branch to match the new state of the branch
-	inRepo $ updateBranch $ syncBranch branch
-	-- In direct mode, we're operating on some special direct mode
-	-- branch, rather than the intended branch, so update the indended
-	-- branch.
-	whenM isDirect $
-		inRepo $ updateBranch $ fromDirectBranch branch
+updateSyncBranch (Just branch) = inRepo $ updateBranch $ syncBranch branch
 
 updateBranch :: Git.Ref -> Git.Repo -> IO ()
 updateBranch syncbranch g = 
@@ -348,7 +333,7 @@ pushBranch remote branch g = tryIO (directpush g) `after` syncpush g
 		]
 	directpush = Git.Command.runQuiet $ pushparams
 		[ Git.fromRef $ Git.Ref.base $ Annex.Branch.name
-		, Git.fromRef $ Git.Ref.base $ fromDirectBranch branch
+		, Git.fromRef $ Git.Ref.base branch
 		]
 	pushparams branches =
 		[ Param "push"

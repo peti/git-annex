@@ -111,7 +111,7 @@ distributionDownloadComplete d dest cleanup t
 	| transferDirection t == Download = do
 		debug ["finished downloading git-annex distribution"]
 		maybe (failedupgrade "bad download") go
-			=<< liftAnnex (withObjectLoc k fsckit (getM fsckit))
+			=<< liftAnnex (withObjectLoc k fsckit)
 	| otherwise = cleanup
   where
 	k = distributionKey d

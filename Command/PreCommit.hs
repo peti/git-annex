@@ -10,10 +10,8 @@
 module Command.PreCommit where
 
 import Command
-import Config
 import qualified Command.Add
 import qualified Command.Fix
-import Annex.Direct
 import Annex.Hook
 import Annex.Link
 import Annex.View
@@ -36,48 +34,38 @@ cmd = command "pre-commit" SectionPlumbing
 	(withParams seek)
 
 seek :: CmdParams -> CommandSeek
-seek ps = lockPreCommitHook $ ifM isDirect
-	( do
-		-- update direct mode mappings for committed files
-		withWords startDirect ps
-		runAnnexHook preCommitAnnexHook
-	, do
-		ifM (not <$> versionSupportsUnlockedPointers <&&> liftIO Git.haveFalseIndex)
-			( do
-				(fs, cleanup) <- inRepo $ Git.typeChangedStaged ps
-				whenM (anyM isOldUnlocked fs) $
-					error "Cannot make a partial commit with unlocked annexed files. You should `git annex add` the files you want to commit, and then run git commit."
-				void $ liftIO cleanup
-			, do
-				-- fix symlinks to files being committed
-				flip withFilesToBeCommitted ps $ \f -> 
-					maybe stop (Command.Fix.start Command.Fix.FixSymlinks f)
-						=<< isAnnexLink f
-				-- inject unlocked files into the annex
-				-- (not needed when repo version uses
-				-- unlocked pointer files)
-				unlessM versionSupportsUnlockedPointers $
-					withFilesOldUnlockedToBeCommitted startInjectUnlocked ps
-			)
-		runAnnexHook preCommitAnnexHook
-		-- committing changes to a view updates metadata
-		mv <- currentView
-		case mv of
-			Nothing -> noop
-			Just v -> withViewChanges
-				(addViewMetaData v)
-				(removeViewMetaData v)
-	)
-	
+seek ps = lockPreCommitHook $ do
+	ifM (not <$> versionSupportsUnlockedPointers <&&> liftIO Git.haveFalseIndex)
+		( do
+			(fs, cleanup) <- inRepo $ Git.typeChangedStaged ps
+			whenM (anyM isOldUnlocked fs) $
+				error "Cannot make a partial commit with unlocked annexed files. You should `git annex add` the files you want to commit, and then run git commit."
+			void $ liftIO cleanup
+		, do
+			-- fix symlinks to files being committed
+			flip withFilesToBeCommitted ps $ \f -> 
+				maybe stop (Command.Fix.start Command.Fix.FixSymlinks f)
+					=<< isAnnexLink f
+			-- inject unlocked files into the annex
+			-- (not needed when repo version uses
+			-- unlocked pointer files)
+			unlessM versionSupportsUnlockedPointers $
+				withFilesOldUnlockedToBeCommitted startInjectUnlocked ps
+		)
+	runAnnexHook preCommitAnnexHook
+	-- committing changes to a view updates metadata
+	mv <- currentView
+	case mv of
+		Nothing -> noop
+		Just v -> withViewChanges
+			(addViewMetaData v)
+			(removeViewMetaData v)
 
 startInjectUnlocked :: FilePath -> CommandStart
 startInjectUnlocked f = next $ do
 	unlessM (callCommandAction $ Command.Add.start f) $
 		error $ "failed to add " ++ f ++ "; canceling commit"
 	next $ return True
-
-startDirect :: [String] -> CommandStart
-startDirect _ = next $ next preCommitDirect
 
 addViewMetaData :: View -> ViewedFile -> Key -> CommandStart
 addViewMetaData v f k = do

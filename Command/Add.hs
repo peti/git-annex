@@ -11,13 +11,13 @@ import Command
 import Annex.Ingest
 import Logs.Location
 import Annex.Content
-import Annex.Content.Direct
 import qualified Annex
 import qualified Annex.Queue
 import qualified Database.Keys
 import Config
 import Annex.FileMatcher
 import Annex.Version
+import Annex.InodeSentinal
 
 cmd :: Command
 cmd = notBareRepo $ withGlobalOptions (jobsOption : jsonOption : fileMatchingOptions) $
@@ -57,7 +57,7 @@ seek o = allowConcurrentOutput $ do
 		NoBatch -> do
 			let go a = a gofile (addThese o)
 			go (withFilesNotInGit (not $ includeDotFiles o))
-			ifM (versionSupportsUnlockedPointers <||> isDirect)
+			ifM versionSupportsUnlockedPointers
 				( go withFilesMaybeModified
 				, go withFilesOldUnlocked
 				)
@@ -100,15 +100,7 @@ start file = ifAnnexed file addpresent add
 				Just s | isSymbolicLink s -> fixuplink key
 				_ -> ifM (sameInodeCache file =<< Database.Keys.getInodeCaches key)
 						( stop, add )
-		, ifM isDirect
-			( do
-				ms <- liftIO $ catchMaybeIO $ getSymbolicLinkStatus file
-				case ms of
-					Just s | isSymbolicLink s -> fixuplink key
-					_ -> ifM (goodContent key file)
-						( stop , add )
-			, fixuplink key
-			)
+		, fixuplink key
 		)
 	fixuplink key = do
 		-- the annexed symlink is present but not yet added to git

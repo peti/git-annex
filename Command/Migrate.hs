@@ -20,7 +20,7 @@ import Logs.Web
 import qualified Remote
 
 cmd :: Command
-cmd = notDirect $ withGlobalOptions annexedMatchingOptions $
+cmd = withGlobalOptions annexedMatchingOptions $
 	command "migrate" SectionUtility 
 		"switch data to different backend"
 		paramPaths (withParams seek)
@@ -73,7 +73,7 @@ perform file oldkey oldbackend newbackend = go =<< genkey
 	go (Just (newkey, knowngoodcontent))
 		| knowngoodcontent = finish newkey
 		| otherwise = stopUnless checkcontent $ finish newkey
-	checkcontent = Command.Fsck.checkBackend oldbackend oldkey Command.Fsck.KeyLocked $ Just file
+	checkcontent = Command.Fsck.checkBackend oldbackend oldkey Command.Fsck.KeyLocked
 	finish newkey = ifM (Command.ReKey.linkKey file oldkey newkey)
 		( do
 			copyMetaData oldkey newkey

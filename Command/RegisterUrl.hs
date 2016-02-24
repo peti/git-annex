@@ -15,7 +15,7 @@ import Command.FromKey (mkKey)
 import qualified Remote
 
 cmd :: Command
-cmd = notDirect $ notBareRepo $
+cmd = notBareRepo $
 	command "registerurl"
 		SectionPlumbing "registers an url for a key"
 		(paramPair paramKey paramUrl)

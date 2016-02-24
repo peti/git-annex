@@ -34,7 +34,6 @@ import Annex.InodeSentinal
 import Annex.Version
 import qualified Annex
 import Utility.InodeCache
-import Annex.Content.Direct
 import qualified Database.Keys
 import qualified Command.Sync
 import qualified Git.Branch
@@ -235,7 +234,7 @@ commitStaged msg = do
  - access the file after closing it. -}
 delayaddDefault :: Annex (Maybe Seconds)
 #ifdef darwin_HOST_OS
-delayaddDefault = ifM (isDirect <||> versionSupportsUnlockedPointers)
+delayaddDefault = ifM versionSupportsUnlockedPointers
 	( return Nothing
 	, return $ Just $ Seconds 1
 	)
@@ -265,14 +264,13 @@ delayaddDefault = return Nothing
 handleAdds :: Bool -> Maybe Seconds -> [Change] -> Assistant [Change]
 handleAdds havelsof delayadd cs = returnWhen (null incomplete) $ do
 	let (pending, inprocess) = partition isPendingAddChange incomplete
-	direct <- liftAnnex isDirect
 	unlocked <- liftAnnex versionSupportsUnlockedPointers
-	let lockingfiles = not (unlocked || direct)
+	let lockingfiles = not unlocked
 	let lockdownconfig = LockDownConfig
 		{ lockingFile = lockingfiles
 		, hardlinkFileTmp = True
 		}
-	(pending', cleanup) <- if unlocked || direct
+	(pending', cleanup) <- if unlocked
 		then return (pending, noop)
 		else findnew pending
 	(postponed, toadd) <- partitionEithers
@@ -286,9 +284,9 @@ handleAdds havelsof delayadd cs = returnWhen (null incomplete) $ do
 		added <- addaction toadd $
 			catMaybes <$>
 				if not lockingfiles
-					then addunlocked direct toadd
+					then addunlocked toadd
 					else forM toadd (add lockdownconfig)
-		if DirWatcher.eventsCoalesce || null added || unlocked || direct
+		if DirWatcher.eventsCoalesce || null added || unlocked
 			then return $ added ++ otherchanges
 			else do
 				r <- handleAdds havelsof delayadd =<< getChanges
@@ -331,10 +329,10 @@ handleAdds havelsof delayadd cs = returnWhen (null incomplete) $ do
 	 - same InodeCache as the new file. If so, we can just update
 	 - bookkeeping, and stage the file in git.
 	 -}
-	addunlocked :: Bool -> [Change] -> Assistant [Maybe Change]
-	addunlocked isdirect toadd = do
+	addunlocked :: [Change] -> Assistant [Maybe Change]
+	addunlocked toadd = do
 		ct <- liftAnnex compareInodeCachesWith
-		m <- liftAnnex $ removedKeysMap isdirect ct cs
+		m <- liftAnnex $ removedKeysMap ct cs
 		delta <- liftAnnex getTSDelta
 		let cfg = LockDownConfig
 			{ lockingFile = False
@@ -349,26 +347,22 @@ handleAdds havelsof delayadd cs = returnWhen (null incomplete) $ do
 					Just cache ->
 						case M.lookup (inodeCacheToKey ct cache) m of
 							Nothing -> add cfg c
-							Just k -> fastadd isdirect c k
+							Just k -> fastadd c k
 
-	fastadd :: Bool -> Change -> Key -> Assistant (Maybe Change)
-	fastadd isdirect change key = do
+	fastadd :: Change -> Key -> Assistant (Maybe Change)
+	fastadd change key = do
 		let source = keySource $ lockedDown change
-		liftAnnex $ if isdirect
-			then finishIngestDirect key source
-			else finishIngestUnlocked key source
+		liftAnnex $ finishIngestUnlocked key source
 		done change Nothing (keyFilename source) key
 
-	removedKeysMap :: Bool -> InodeComparisonType -> [Change] -> Annex (M.Map InodeCacheKey Key)
-	removedKeysMap isdirect ct l = do
+	removedKeysMap :: InodeComparisonType -> [Change] -> Annex (M.Map InodeCacheKey Key)
+	removedKeysMap ct l = do
 		mks <- forM (filter isRmChange l) $ \c ->
 			catKeyFile $ changeFile c
 		M.fromList . concat <$> mapM mkpairs (catMaybes mks)
 	  where
-		mkpairs k = map (\c -> (inodeCacheToKey ct c, k)) <$>
-			if isdirect
-				then recordedInodeCache k
-				else Database.Keys.getInodeCaches k
+		mkpairs k = map (\c -> (inodeCacheToKey ct c, k))
+			<$> Database.Keys.getInodeCaches k
 
 	failedingest change = do
 		refill [retryChange change]
@@ -380,11 +374,8 @@ handleAdds havelsof delayadd cs = returnWhen (null incomplete) $ do
 		ifM versionSupportsUnlockedPointers
 			( stagePointerFile file =<< hashPointerFile key
 			, do
-				link <- ifM isDirect
-					( calcRepo $ gitAnnexLink file key
-					, makeLink file key mcache
-					)
-				whenM (pure DirWatcher.eventsCoalesce <||> isDirect) $
+				link <- makeLink file key mcache
+				whenM (pure DirWatcher.eventsCoalesce) $
 					stageSymlink file =<< hashSymlink link
 			)
 		showEndOk

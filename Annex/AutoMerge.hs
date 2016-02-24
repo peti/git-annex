@@ -13,7 +13,6 @@ module Annex.AutoMerge
 
 import Annex.Common
 import qualified Annex.Queue
-import Annex.Direct
 import Annex.CatFile
 import Annex.Link
 import Annex.Content
@@ -25,7 +24,6 @@ import qualified Git
 import qualified Git.Branch
 import Git.Types (BlobType(..))
 import Git.FilePath
-import Config
 import Annex.ReplaceFile
 import Annex.VariantFile
 import qualified Database.Keys
@@ -49,11 +47,8 @@ autoMergeFrom branch currbranch commitmode = do
 		Nothing -> go Nothing
 		Just b -> go =<< inRepo (Git.Ref.sha b)
   where
-	go old = ifM isDirect
-		( mergeDirect currbranch old branch (resolveMerge old branch) commitmode
-		, inRepo (Git.Merge.mergeNonInteractive branch commitmode)
-			<||> (resolveMerge old branch <&&> commitResolvedMerge commitmode)
-		)
+	go old = inRepo (Git.Merge.mergeNonInteractive branch commitmode)
+		<||> (resolveMerge old branch <&&> commitResolvedMerge commitmode)
 
 {- Resolves a conflicted merge. It's important that any conflicts be
  - resolved in a way that itself avoids later merge conflicts, since
@@ -104,19 +99,17 @@ resolveMerge us them = do
 	let merged = not (null mergedfs')
 	void $ liftIO cleanup
 
-	unlessM isDirect $ do
-		(deleted, cleanup2) <- inRepo (LsFiles.deleted [top])
-		unless (null deleted) $
-			Annex.Queue.addCommand "rm"
-				[Param "--quiet", Param "-f", Param "--"]
-				deleted
-		void $ liftIO cleanup2
+	(deleted, cleanup2) <- inRepo (LsFiles.deleted [top])
+	unless (null deleted) $
+		Annex.Queue.addCommand "rm"
+			[Param "--quiet", Param "-f", Param "--"]
+			deleted
+	void $ liftIO cleanup2
 
 	when merged $ do
 		Annex.Queue.flush
-		unlessM isDirect $ do
-			unstagedmap <- inodeMap $ inRepo $ LsFiles.notInRepo False [top]
-			cleanConflictCruft mergedks' mergedfs' unstagedmap
+		unstagedmap <- inodeMap $ inRepo $ LsFiles.notInRepo False [top]
+		cleanConflictCruft mergedks' mergedfs' unstagedmap
 		showLongNote "Merge conflict was automatically resolved; you may want to examine the result."
 	return merged
 
@@ -188,12 +181,7 @@ resolveMerge' unstagedmap (Just us) them u = do
 		stagePointerFile dest =<< hashPointerFile key
 		Database.Keys.addAssociatedFile key =<< inRepo (toTopFilePath dest)
 
-	withworktree f a = ifM isDirect
-		( do
-			d <- fromRepo gitAnnexMergeDir
-			a (d </> f)
-		, a f
-		)
+	withworktree f a = a f
 
 	{- Stage a graft of a directory or file from a branch
 	 - and update the work tree. -}

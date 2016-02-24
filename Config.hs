@@ -80,9 +80,6 @@ setRemoteCost r c = setConfig (remoteConfig r "cost") (show c)
 setRemoteAvailability :: Git.Repo -> Availability -> Annex ()
 setRemoteAvailability r c = setConfig (remoteConfig r "availability") (show c)
 
-isDirect :: Annex Bool
-isDirect = annexDirect <$> Annex.getGitConfig
-
 crippledFileSystem :: Annex Bool
 crippledFileSystem = annexCrippledFileSystem <$> Annex.getGitConfig
 

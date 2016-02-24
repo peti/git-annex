@@ -22,7 +22,7 @@ to the git repository, instead of to the annex.
 Large files are added to the annex in locked form, which prevents further
 modification of their content unless unlocked by [[git-annex-unlock]](1).
 (This is not the case however when a repository is in a filesystem not
-supporting symlinks, or is in direct mode.)
+supporting symlinks.)
 To add a file to the annex in unlocked form, `git add` can be used instead 
 (that only works when the repository has annex.version 6 or higher).
 
