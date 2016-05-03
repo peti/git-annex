@@ -99,13 +99,14 @@ numChunks = pred . fromJust . keyChunkNum . fst . nextChunkKeyStream
 storeChunks
 	:: UUID
 	-> ChunkConfig
+	-> EncKey
 	-> Key
 	-> FilePath
 	-> MeterUpdate
 	-> Storer
 	-> CheckPresent
 	-> Annex Bool
-storeChunks u chunkconfig k f p storer checker = 
+storeChunks u chunkconfig encryptor k f p storer checker = 
 	case chunkconfig of
 		(UnpaddedChunks chunksize) | isStableKey k -> 
 			bracketIO open close (go chunksize)
@@ -121,7 +122,7 @@ storeChunks u chunkconfig k f p storer checker =
 		return False
 	go chunksize (Right h) = do
 		let chunkkeys = chunkKeyStream k chunksize
-		(chunkkeys', startpos) <- seekResume h chunkkeys checker
+		(chunkkeys', startpos) <- seekResume h encryptor chunkkeys checker
 		b <- liftIO $ L.hGetContents h
 		gochunks p startpos chunksize b chunkkeys'
 
@@ -165,10 +166,11 @@ storeChunks u chunkconfig k f p storer checker =
  -}
 seekResume
 	:: Handle
+	-> EncKey
 	-> ChunkKeyStream
 	-> CheckPresent
 	-> Annex (ChunkKeyStream, BytesProcessed)
-seekResume h chunkkeys checker = do
+seekResume h encryptor chunkkeys checker = do
 	sz <- liftIO (hFileSize h)
 	if sz <= fromMaybe 0 (keyChunkSize $ fst $ nextChunkKeyStream chunkkeys)
 		then return (chunkkeys, zeroBytesProcessed)
@@ -180,7 +182,7 @@ seekResume h chunkkeys checker = do
 			liftIO $ hSeek h AbsoluteSeek sz
 			return (cks, toBytesProcessed sz)
 		| otherwise = do
-			v <- tryNonAsync (checker k)
+			v <- tryNonAsync (checker (encryptor k))
 			case v of
 				Right True ->
 					check pos' cks' sz
