@@ -1,3 +1,7 @@
+  * Support git's new smudgeToFile/cleanFromFile interface.
+    Using this interface makes v6 mode more efficient, and makes annex.thin
+    be honored when git updates unlocked files in the work tree.
+
 git-annex (6.20160614) UNRELEASED; urgency=medium
 
   * Webapp: Don't allow deleting a remote that has syncing disabled,

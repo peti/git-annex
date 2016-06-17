@@ -4,7 +4,12 @@ git-annex smudge - git filter driver for git-annex
 
 # SYNOPSIS
 
-git annex smudge [--clean] file
+	[filter "annex"]
+	        smudge = git annex smudge -- %f
+	        clean = git annex smudge --clean -- %f
+	        smudgeToFile = git annex smudge --direct-access -- %p
+	        cleanFromFile = git annex smudge --direct-access --clean -- %p
+		required = true
 
 # DESCRIPTION
 
@@ -16,13 +21,9 @@ When adding a file with `git add`, the annex.largefiles config is
 consulted to decide if a given file should be added to git as-is,
 or if its content are large enough to need to use git-annex.
 
-The git configuration to use this command as a filter driver is as follows.
-This is normally set up for you by git-annex init, so you should
-not need to configure it manually.
-
-	[filter "annex"]
-	        smudge = git-annex smudge %f
-	        clean = git-annex smudge --clean %f
+The git configuration to use this command as a filter driver is normally
+set up for you by git-annex init as shown in the SYNOPSIS, 
+so you should not need to configure it manually.
 
 To make git use that filter driver, it needs to be configured in
 the .gitattributes file or in `.git/config/attributes`. The latter
