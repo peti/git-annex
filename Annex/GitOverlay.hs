@@ -39,6 +39,8 @@ withWorkTree d = withAltRepo
 	disableSmudgeConfig = map Param
 		[ "-c", "filter.annex.smudge="
 		, "-c", "filter.annex.clean="
+		, "-c", "filter.annex.smudgeToFile="
+		, "-c", "filter.annex.cleanFromFile="
 		]
 
 {- Runs an action with the git index file and HEAD, and a few other
