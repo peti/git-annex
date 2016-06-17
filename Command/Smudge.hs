@@ -59,10 +59,10 @@ smudge o = do
 			-- modifications.
 			ifM (inAnnex k)
 				( do
-					contentfile <- calcRepo (gitAnnexLocation k)
 					thin <- annexThin <$> Annex.getGitConfig
 					if thin && directAccessOption o
 						then do
+							liftIO $ nukeFile file
 							r <- linkFromAnnex k file Nothing
 							case r of
 								LinkAnnexFailed -> providecontent b
@@ -70,6 +70,7 @@ smudge o = do
 						else do
 							when thin $
 								warning $ "Not able to honor annex.thin when git is checking out " ++ file ++ " (run git annex fix to re-thin files)"
+							contentfile <- calcRepo (gitAnnexLocation k)
 							providecontent . fromMaybe b
 								=<< liftIO (catchMaybeIO (B.readFile contentfile))
 				, providecontent b
