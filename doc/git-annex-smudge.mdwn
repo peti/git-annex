@@ -7,8 +7,8 @@ git-annex smudge - git filter driver for git-annex
 	[filter "annex"]
 	        smudge = git annex smudge -- %f
 	        clean = git annex smudge --clean -- %f
-	        smudgeToFile = git annex smudge --direct-access -- %p
-	        cleanFromFile = git annex smudge --direct-access --clean -- %p
+	        smudgeToFile = git annex smudge --direct-access --
+	        cleanFromFile = git annex smudge --direct-access --clean --
 		required = true
 
 # DESCRIPTION

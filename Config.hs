@@ -102,8 +102,11 @@ setCrippledFileSystem b = do
 
 configureSmudgeFilter :: Annex ()
 configureSmudgeFilter = do
-	setConfig (ConfigKey "filter.annex.smudge") "git-annex smudge %f"
-	setConfig (ConfigKey "filter.annex.clean") "git-annex smudge --clean %f"
+	setConfig (ConfigKey "filter.annex.smudge") "git-annex smudge -- %f"
+	setConfig (ConfigKey "filter.annex.clean") "git-annex smudge --clean -- %f"
+	setConfig (ConfigKey "filter.annex.smudgeToFile") "git-annex smudge --direct-access --"
+	setConfig (ConfigKey "filter.annex.cleanFromFile") "git-annex smudge --direct-access --clean --"
+	setConfig (ConfigKey "filter.annex.required") (Git.Config.boolConfig True)
 	lf <- Annex.fromRepo Git.attributesLocal
 	gf <- Annex.fromRepo Git.attributes
 	lfs <- readattr lf

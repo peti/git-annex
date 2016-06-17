@@ -1,6 +1,12 @@
   * Support git's new smudgeToFile/cleanFromFile interface.
     Using this interface makes v6 mode more efficient, and makes annex.thin
     be honored when git updates unlocked files in the work tree.
+  * Users of v6 repositories should re-run git annex init
+    in them after upgrading to this version, to set up the new
+    smudgeToFile/cleanFromFile interface.
+  * v6 init: Also set filter.annex.required, and include -- before
+    the filename in the filter commands to support worktree filenames
+    that start with a dash.
 
 git-annex (6.20160614) UNRELEASED; urgency=medium
 
