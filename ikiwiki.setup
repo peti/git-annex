@@ -209,6 +209,8 @@ created: 1287531313
 ipv6_disabled: 0
 # redirect from http to https?
 redirect_to_https: 0
+# use Lets Encrypt to generate http certificate?
+use_letsencrypt: 1
 
 # inline plugin
 # enable rss feeds by default?
@@ -428,6 +430,10 @@ archive_pagespec: ''
 calendar_autocreate: 1
 # if set, when building calendar pages, also build pages of year and month when no pages were published (building empty calendars).
 calendar_fill_gaps: 1
+
+# img plugin
+# Image formats to process (jpeg, png, gif, svg, pdf or 'everything' to accept all)
+#img_allowed_formats: ''
 
 # listdirectives plugin
 # directory in srcdir that contains directive descriptions
