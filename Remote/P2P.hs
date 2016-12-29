@@ -7,7 +7,8 @@
 
 module Remote.P2P (
 	remote,
-	chainGen
+	chainGen,
+	openConnection,
 ) where
 
 import Annex.Common

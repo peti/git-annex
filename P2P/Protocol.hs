@@ -61,6 +61,9 @@ data Message
 	| PUT AssociatedFile Key
 	| PUT_FROM Offset
 	| ALREADY_HAVE
+	| CONFIGLIST
+	| CONFIGLINE String
+	| CONFIGLISTDONE
 	| SUCCESS
 	| FAILURE
 	| DATA Len -- followed by bytes of data
@@ -83,6 +86,9 @@ instance Proto.Sendable Message where
 	formatMessage (PUT af key) = ["PUT", Proto.serialize af, Proto.serialize key]
 	formatMessage (PUT_FROM offset) = ["PUT-FROM", Proto.serialize offset]
 	formatMessage ALREADY_HAVE = ["ALREADY-HAVE"]
+	formatMessage CONFIGLIST = ["CONFIGLIST"]
+	formatMessage (CONFIGLINE l) = ["CONFIGLINE", Proto.serialize l]
+	formatMessage CONFIGLISTDONE = ["CONFIGLISTDONE"]
 	formatMessage SUCCESS = ["SUCCESS"]
 	formatMessage FAILURE = ["FAILURE"]
 	formatMessage (DATA len) = ["DATA", Proto.serialize len]
@@ -104,6 +110,9 @@ instance Proto.Receivable Message where
 	parseCommand "PUT" = Proto.parse2 PUT
 	parseCommand "PUT-FROM" = Proto.parse1 PUT_FROM
 	parseCommand "ALREADY-HAVE" = Proto.parse0 ALREADY_HAVE
+	parseCommand "CONFIGLIST" = Proto.parse0 CONFIGLIST
+	parseCommand "CONFIGLINE" =  Proto.parse1 CONFIGLINE
+	parseCommand "CONFIGLISTDONE" = Proto.parse0 CONFIGLISTDONE
 	parseCommand "SUCCESS" = Proto.parse0 SUCCESS
 	parseCommand "FAILURE" = Proto.parse0 FAILURE
 	parseCommand "DATA" = Proto.parse1 DATA
@@ -236,6 +245,9 @@ data LocalF c
 	-- with False.
 	| WaitRefChange (ChangedRefs -> c)
 	-- ^ Waits for one or more git refs to change and returns them.
+	| GetConfigList ([String] -> c)
+	-- ^ Gets the git config list in the git config --list format.
+	-- May choose to only send some configs.
 	deriving (Functor)
 
 type Local = Free LocalF
@@ -395,6 +407,9 @@ serveAuthed myuuid = void $ serverLoop handler
 		refs <- local waitRefChange
 		net $ sendMessage (CHANGED refs)
 		return ServerContinue
+	handler CONFIGLIST = do
+		sendConfigList
+		return ServerContinue
 	handler _ = return ServerUnexpected
 
 sendContent :: Key -> AssociatedFile -> Offset -> MeterUpdate -> Proto Bool
@@ -482,3 +497,24 @@ relayToPeer (RelayToPeer b) = do
 	sendMessage (DATA len)
 	sendBytes len b nullMeterUpdate
 relayToPeer (RelayFromPeer _) = return ()
+
+configList :: Proto [String]
+configList = net $ do
+	sendMessage CONFIGLIST
+	collectlines []
+  where
+	collectlines ls = do
+		r <- receiveMessage
+		case r of
+			CONFIGLINE l -> collectlines (l:ls)
+			CONFIGLISTDONE -> return (reverse ls)
+			_ -> do
+				sendMessage $ ERROR "expected CONFIGLINE or CONFIGLISTDONE"
+				return []
+
+sendConfigList :: Proto ()
+sendConfigList = do
+	ls <- local getConfigList
+	net $ forM_ ls $
+		sendMessage . CONFIGLINE
+	net $ sendMessage CONFIGLISTDONE

@@ -25,6 +25,7 @@ git-annex (6.20170101) UNRELEASED; urgency=medium
     supporting locales such as, en_GB.UTF-8.
   * rekey --force: Incorrectly marked the new key's content as being
     present in the local repo even when it was not.
+  * map: Supports mapping P2P remotes.
   * enable-tor: Put tor sockets in /var/lib/tor-annex/, rather
     than in /etc/tor/hidden_service/.
   * enable-tor: No longer needs to be run as root.

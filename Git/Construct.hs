@@ -16,6 +16,7 @@ module Git.Construct (
 	localToUrl,
 	remoteNamed,
 	remoteNamedFromKey,
+	isRemoteUrlConfig,
 	fromRemotes,
 	fromRemoteLocation,
 	repoAbsPath,
@@ -121,14 +122,17 @@ localToUrl reference r
 				]
 			in r { location = Url $ fromJust $ parseURI absurl }
 
+{- Is a git config key the url of a remote? -}
+isRemoteUrlConfig :: String -> Bool
+isRemoteUrlConfig k = startswith "remote." k && endswith ".url" k
+
 {- Calculates a list of a repo's configured remotes, by parsing its config. -}
 fromRemotes :: Repo -> IO [Repo]
 fromRemotes repo = mapM construct remotepairs
   where
 	filterconfig f = filter f $ M.toList $ config repo
 	filterkeys f = filterconfig (\(k,_) -> f k)
-	remotepairs = filterkeys isremote
-	isremote k = startswith "remote." k && endswith ".url" k
+	remotepairs = filterkeys isRemoteUrlConfig
 	construct (k,v) = remoteNamedFromKey k $ fromRemoteLocation v repo
 
 {- Sets the name of a remote when constructing the Repo to represent it. -}

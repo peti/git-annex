@@ -22,6 +22,8 @@ import P2P.IO
 import Logs.Location
 import Types.NumCopies
 import Utility.Metered
+import qualified Git.Config
+import Git.Construct (isRemoteUrlConfig)
 
 import Control.Monad.Free
 
@@ -120,6 +122,16 @@ runLocal runmode runner a = case a of
 				Left e -> return (Left (show e))
 				Right changedrefs -> runner (next changedrefs)
 		_ -> return $ Left "change notification not available"
+	GetConfigList next -> do
+		g <- Annex.gitRepo
+		-- A git config might contain sensative data that
+		-- should not be exposed to peers. Only the parts of the
+		-- git config needed for the map command are sent:
+		-- The remote urls, and annex uuids.
+		let ls = Git.Config.format $
+			filter (\(k,_) -> isRemoteUrlConfig k || )
+			M.toList $ Git.config g
+		runner (next ls)
   where
 	transfer mk k af ta = case runmode of
 		-- Update transfer logs when serving.

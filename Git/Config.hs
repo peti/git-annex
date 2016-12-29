@@ -138,6 +138,12 @@ parse s
 	sep c = M.fromListWith (++) . map (\(k,v) -> (k, [v])) .
 		map (separate (== c))
 
+{- Generates the git config --list format -}
+format :: [(String, String)] -> [String]
+format = map go
+  where
+	go (k, v) = k ++ "=" ++ v
+
 {- Checks if a string from git config is a true value. -}
 isTrue :: String -> Maybe Bool
 isTrue s

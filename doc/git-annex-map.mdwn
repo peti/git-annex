@@ -15,7 +15,7 @@ it is used to display the file to your screen.
   
 This command only connects to hosts that the host it's run on can
 directly connect to. It does not try to tunnel through intermediate hosts.
-So it might not show all connections between the repositories in the network
+So it might not show all connections between the repositories in the network.
   
 Also, if connecting to a host requires a password, you might have to enter
 it several times as the map is being built.

@@ -1,6 +1,6 @@
 {- git-annex command
  -
- - Copyright 2010 Joey Hess <id@joeyh.name>
+ - Copyright 2010-2016 Joey Hess <id@joeyh.name>
  -
  - Licensed under the GNU GPL version 3 or higher.
  -}
@@ -22,6 +22,11 @@ import Logs.Trust
 import Types.TrustLevel
 import qualified Remote.Helper.Ssh as Ssh
 import qualified Utility.Dot as Dot
+import P2P.Address
+import P2P.Auth
+import qualified P2P.IO as P2P
+import qualified P2P.Annex as P2P
+import qualified P2P.Protocol as P2P
 
 -- a link from the first repository to the second (its remote)
 data Link = Link Git.Repo Git.Repo
@@ -204,13 +209,10 @@ scan r = do
 tryScan :: Git.Repo -> Annex (Maybe Git.Repo)
 tryScan r
 	| Git.repoIsSsh r = sshscan
-	| Git.repoIsUrl r = case Git.remoteName r of
-		-- Can't scan a non-ssh url, so use any cached uuid for it.
-		Just n -> Just <$> (either
-			(const (pure r))
-			(liftIO . setUUID r . Remote.uuid)
-			=<< Remote.byName' n)
-		Nothing -> return $ Just r
+	| Git.repoIsUrl r = case repoP2PAddress r of
+		Just addr -> either (const noscan) return
+			=<< tryNonAsync (p2pscan addr)
+		Nothing -> noscan -- can't scan an arbitrary url
 	| otherwise = liftIO $ safely $ Git.Config.read r
   where
 	pipedconfig pcmd params = liftIO $ safely $
@@ -235,6 +237,13 @@ tryScan r
 			| otherwise = cdto dir
 		cdto p = "if ! cd " ++ shellEscape p ++ " 2>/dev/null; then cd " ++ shellEscape p ++ ".git; fi"
 
+	noscan = case Git.remoteName r of
+		Just n -> Just <$> (either
+			(const (pure r))
+			(liftIO . setUUID r . Remote.uuid)
+			=<< Remote.byName' n)
+		Nothing -> return $ Just r
+
 	-- First, try sshing and running git config manually,
 	-- only fall back to git-annex-shell configlist if that
 	-- fails.
@@ -255,6 +264,21 @@ tryScan r
 	sshnote = do
 		showAction "sshing"
 		showOutput
+
+	p2pscan addr = do
+		v <- loadP2PRemoteAuthToken addr
+		case v of
+			Nothing -> noscan
+			Just authtoken -> do
+				conn <- inRepo $ flip P2P.connectPeer addr
+				myuuid <- getUUID
+				res <- P2P.runFullProto P2P.Client conn $ do
+					_ <- P2P.auth myuuid authtoken
+					P2P.configList
+				case res of
+					Left _ -> noscan
+					Right ls -> liftIO $ Just
+						<$> Git.Config.store (unlines ls) r
 
 {- Spidering can find multiple paths to the same repo, so this is used
  - to combine (really remove) duplicate repos with the same UUID. -}
