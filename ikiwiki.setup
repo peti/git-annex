@@ -443,21 +443,14 @@ directive_description_dir: ikiwiki/directive
 # Should teximg use dvipng to render, or dvips and convert?
 #teximg_dvipng: ''
 # LaTeX prefix for teximg plugin
-#teximg_prefix: '\documentclass{article}
-#
+#teximg_prefix: |
+#  \documentclass{article}
 #  \usepackage[utf8]{inputenc}
-#
 #  \usepackage{amsmath}
-#
 #  \usepackage{amsfonts}
-#
 #  \usepackage{amssymb}
-#
 #  \pagestyle{empty}
-#
 #  \begin{document}
-#
-#'
 # LaTeX postfix for teximg plugin
 #teximg_postfix: \end{document}
 
