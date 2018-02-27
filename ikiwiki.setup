@@ -24,6 +24,7 @@ banned_users:
 - Balan
 - Roksolana
 - avdhusingh6497@d72e8319bb7c179778775a8b096b120fc219fbad
+- marjor
 # where the source of the wiki is located
 srcdir: /home/b-git-annex/source/doc
 # where to build the wiki
