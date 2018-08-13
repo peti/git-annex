@@ -687,6 +687,14 @@ subdirectories).
 
   See [[git-annex-diffdriver]](1) for details.
 
+* `filterdriver`
+
+  This command lets git-annex be used as a git filter driver, allowing
+  annexed files in the git repository to be unlocked at all times, instead
+  of being symlinks.
+
+  See [[git-annex-filterdriver]](1) for details.
+
 * `smudge`
 
   This command lets git-annex be used as a git filter driver, allowing

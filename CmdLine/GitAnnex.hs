@@ -105,6 +105,7 @@ import qualified Command.Forget
 import qualified Command.P2P
 import qualified Command.Proxy
 import qualified Command.DiffDriver
+import qualified Command.FilterDriver
 import qualified Command.Smudge
 import qualified Command.Undo
 import qualified Command.Version
@@ -214,6 +215,7 @@ cmds testoptparser testrunner =
 	, Command.P2P.cmd
 	, Command.Proxy.cmd
 	, Command.DiffDriver.cmd
+	, Command.FilterDriver.cmd
 	, Command.Smudge.cmd
 	, Command.Undo.cmd
 	, Command.Version.cmd

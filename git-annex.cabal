@@ -718,6 +718,7 @@ Executable git-annex
     Command.ExamineKey
     Command.Expire
     Command.Export
+    Command.FilterDriver
     Command.Find
     Command.FindRef
     Command.Fix

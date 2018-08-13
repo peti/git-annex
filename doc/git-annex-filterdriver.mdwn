@@ -1,0 +1,42 @@
+# NAME
+
+git-annex filterdriver - git filter driver for git-annex
+
+# SYNOPSIS
+
+git annex filterdriver
+
+# DESCRIPTION
+
+This command lets git-annex be used as a git filter driver which lets
+annexed files in the git repository to be unlocked at all times, instead
+of being symlinks.
+
+When adding a file with `git add`, the annex.largefiles config is
+consulted to decide if a given file should be added to git as-is,
+or if its content are large enough to need to use git-annex.
+
+The git configuration to use this command as a filter driver is as follows.
+This is normally set up for you by git-annex init, so you should
+not need to configure it manually.
+
+	[filter "annex"]
+		process = git-annex filterdriver
+
+To make git use that filter driver, it needs to be configured in
+the `.gitattributes` file or in `.git/info/attributes`. The latter
+is normally configured when a repository is initialized, with the following
+contents:
+
+	* filter=annex
+	.* !filter
+
+# SEE ALSO
+
+[[git-annex]](1)
+
+# AUTHOR
+
+Joey Hess <id@joeyh.name>
+
+Warning: Automatically converted into a man page by mdwn2man. Edit with care.

@@ -11,6 +11,7 @@
 module Git.Protocol.PktLine (
 	PktLine,
 	flushPkt,
+	contentPktLine,
 	stringPktLine,
 	pktLineString,
 	streamPktLine,
@@ -54,6 +55,9 @@ maxPktLineLength = 65520
 -- eg, signal the end of a stream of binary data.
 flushPkt :: PktLine
 flushPkt = PktLine S.empty
+
+contentPktLine :: PktLine -> S.ByteString
+contentPktLine (PktLine b) = b
 
 -- | Encodes a String as a PktLine. Fails if the String is too large.
 --

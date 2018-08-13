@@ -67,14 +67,20 @@ git-annex should use smudge/clean filters.
   can cause git to use a lot of memory.
 
   This needs to be fixed in git, but my proposed interface in
-  <http://thread.gmane.org/gmane.comp.version-control.git/294425> would
+   <http://thread.gmane.org/gmane.comp.version-control.git/294425> would
   avoid the problem for git checkout, since it would use the new interface
   and not the smudge filter.
 
-  Last verified with git 2.18 in 2018. 
+  Last verified with git 2.18 in 2018. git checkout of a 1gb file uses:
 
-  To check: Does the long-running filter process interface have the same
-  problem?
+  0.21user 5.25system 0:05.86elapsed 93%CPU (0avgtext+0avgdata 1028216maxresident)k 2048560inputs+2048088outputs (6major+258129minor)pagefaults 0swaps
+
+  When using the long-running filter process interface, smudge of the same
+  file uses:
+
+  0.35user 3.49system 0:03.46elapsed 110%CPU (0avgtext+0avgdata 1028284maxresident)k 928inputs+2048088outputs (10major+258244minor)pagefaults 0swaps
+
+  Same bad memory use from git.
 
 * Eventually (but not yet), make v6 the default for new repositories.
   Note that the assistant forces repos into direct mode; that will need to

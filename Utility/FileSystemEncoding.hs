@@ -17,6 +17,8 @@ module Utility.FileSystemEncoding (
 	toRawFilePath,
 	decodeBS,
 	encodeBS,
+	decodeBSS,
+	encodeBSS,
 	decodeW8,
 	encodeW8,
 	encodeW8NUL,
@@ -38,6 +40,7 @@ import Data.List
 import qualified Data.ByteString as S
 import qualified Data.ByteString.Lazy as L
 #ifdef mingw32_HOST_OS
+import qualified Data.ByteString.UTF8 as S8
 import qualified Data.ByteString.Lazy.UTF8 as L8
 #endif
 
@@ -116,12 +119,26 @@ decodeBS = encodeW8NUL . L.unpack
 decodeBS = L8.toString
 #endif
 
+decodeBSS :: S.ByteString -> FilePath
+#ifndef mingw32_HOST_OS
+decodeBSS = encodeW8NUL . S.unpack
+#else
+decodeBS = S8.toString
+#endif
+
 {- Encodes a FilePath into a ByteString, applying the filesystem encoding. -}
 encodeBS :: FilePath -> L.ByteString
 #ifndef mingw32_HOST_OS
 encodeBS = L.pack . decodeW8NUL
 #else
 encodeBS = L8.fromString
+#endif
+
+encodeBSS :: FilePath -> S.ByteString
+#ifndef mingw32_HOST_OS
+encodeBSS = S.pack . decodeW8NUL
+#else
+encodeBSS = S8.fromString
 #endif
 
 {- Recent versions of the unix package have this alias; defined here
