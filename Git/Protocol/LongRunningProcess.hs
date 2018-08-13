@@ -6,14 +6,13 @@
  - Licensed under the GNU GPL version 3 or higher.
  -}
 
-{-# LANGUAGE OverloadedStrings, LambdaCase #-}
+{-# LANGUAGE LambdaCase #-}
 
 module Git.Protocol.LongRunningProcess where
 
 import Git.Protocol.PktLine
 
-import qualified Data.Text as T
-import Data.ByteString.Builder
+import Data.List
 import Data.Monoid
 import Control.Applicative
 import System.IO
@@ -21,31 +20,30 @@ import System.IO
 data ClientServer = Client | Server
 	deriving (Show)
 
-clientServerSuffix :: ClientServer -> T.Text
+clientServerSuffix :: ClientServer -> String
 clientServerSuffix Client = "-client"
 clientServerSuffix Server = "-server"
 
-data Role = Role ClientServer T.Text
+data Role = Role ClientServer String
 	deriving (Show)
 
-parseRole :: T.Text -> Maybe Role
-parseRole t = go Client <|> go Server
+parseRole :: String -> Maybe Role
+parseRole s = go Client <|> go Server
   where
 	go cs = 
 		let suffix = clientServerSuffix cs
-		in if suffix `T.isSuffixOf` t
+		in if suffix `isSuffixOf` s
 			then Just $ Role cs $
-				T.take (T.length t - T.length suffix) t
+				take (length s - length suffix) s
 			else Nothing
 
 pktRole :: PktLine -> Maybe Role
-pktRole = either (const Nothing) parseRole
-	. pktLineText
+pktRole = parseRole . pktLineString
 
 rolePkt :: Role -> Maybe PktLine
-rolePkt (Role cs t) = textPktLine $ t <> clientServerSuffix cs
+rolePkt (Role cs t) = stringPktLine $ t <> clientServerSuffix cs
 
-newtype Capability = Capability { fromCapability :: T.Text }
+newtype Capability = Capability { fromCapability :: String }
 	deriving (Show, Eq)
 
 pktCapability :: PktLine -> Maybe Capability
@@ -54,7 +52,7 @@ pktCapability = parseKV "capability" Capability
 capabilityPkt :: Capability -> Maybe PktLine
 capabilityPkt = formatKV "capability" fromCapability
 
-newtype Version = Version { fromVersion :: T.Text }
+newtype Version = Version { fromVersion :: String }
 	deriving (Show, Eq)
 
 pktVersion :: PktLine -> Maybe Version
@@ -126,15 +124,15 @@ handshake selectrole selectcapability input output =
 		sendpkts capabilityPkt mycaps $
 			cnt mycaps
 
-formatKV :: T.Text -> (v -> T.Text ) -> v -> Maybe PktLine
-formatKV k f v = textPktLine $ k <> "=" <> f v
+formatKV :: String -> (v -> String) -> v -> Maybe PktLine
+formatKV k f v = stringPktLine $ k <> "=" <> f v
 
-parseKV :: T.Text -> (T.Text -> v) -> PktLine -> Maybe v
-parseKV k mkv = either (const Nothing) go . pktLineText
+parseKV :: String -> (String -> v) -> PktLine -> Maybe v
+parseKV k mkv = go . pktLineString
   where
 	kprefix = k <> "="
 	go t
-		| kprefix `T.isPrefixOf` t = Just $ mkv $ 
-			T.drop (T.length kprefix) t
+		| kprefix `isPrefixOf` t = Just $ mkv $ 
+			drop (length kprefix) t
 		| otherwise = Nothing
 

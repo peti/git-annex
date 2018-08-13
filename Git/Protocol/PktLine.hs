@@ -11,8 +11,8 @@
 module Git.Protocol.PktLine (
 	PktLine,
 	flushPkt,
-	textPktLine,
-	pktLineText,
+	stringPktLine,
+	pktLineString,
 	streamPktLine,
 	encodePktLine,
 	parsePktLine,
@@ -28,12 +28,12 @@ import Data.Attoparsec.ByteString as A
 import Data.Attoparsec.ByteString.Char8 as A
 import Data.Attoparsec.ByteString.Lazy as AL
 import Data.ByteString.Builder
-import qualified Data.Text as T
-import qualified Data.Text.Encoding as E
-import qualified Data.Text.Encoding.Error as E
 import Data.Monoid
 import Data.Word
 import System.IO
+
+import Utility.PartialPrelude
+import Utility.FileSystemEncoding
 
 -- | A pkt-line encodes a variable length binary string with a maximum size.
 --
@@ -55,26 +55,24 @@ maxPktLineLength = 65520
 flushPkt :: PktLine
 flushPkt = PktLine S.empty
 
--- | Encodes a Text as a PktLine. Fails if the Text it too large.
+-- | Encodes a String as a PktLine. Fails if the String is too large.
 --
 -- A trailing newline is included after it, as the protocol recommends
 -- doing for non-binary data.
-textPktLine :: T.Text -> Maybe PktLine
-textPktLine t = 
-	let b = E.encodeUtf8 t <> "\n"
+stringPktLine :: String -> Maybe PktLine
+stringPktLine s = 
+	let b = encodeBSS s <> "\n"
 	in if S.length b > fromIntegral maxPktLineContent
 		then Nothing
 		else Just (PktLine b)
 
--- | Extracts Text from a PktLine. Any trailing newline is removed.
-pktLineText :: PktLine -> Either E.UnicodeException T.Text
-pktLineText (PktLine b) = case E.decodeUtf8' b of
-	Left e -> Left e
-	Right t -> 
-		let (t', end) = T.splitAt (T.length t - 1) t
-		in if end == "\n"
-			then Right t'
-			else Right t
+-- | Extracts a String from a PktLine. Any trailing newline is removed.
+pktLineString :: PktLine -> String
+pktLineString (PktLine b) = 
+	let s = decodeBSS b
+	in if end s == "\n"
+		then beginning s
+		else s
 
 -- | Creates a stream of PktLines encoding a lazy ByteString of any size.
 -- Note that the stream is not terminated with a flushPkt.
