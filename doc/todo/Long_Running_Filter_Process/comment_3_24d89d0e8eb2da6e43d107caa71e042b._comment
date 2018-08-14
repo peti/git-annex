@@ -1,0 +1,16 @@
+[[!comment format=mdwn
+ username="joey"
+ subject="""comment 3"""
+ date="2018-08-13T20:24:02Z"
+ content="""
+The "filterdriver" branch implements support for these.
+
+However, it's actually slower than the old interface, because the new
+interface requires git-annex read the whole file content from git when
+adding a file, and the old interface let it not read any content.
+
+Since the new interface does have capabilities, a new capability could
+prevent schepping the content over the pipe, and let the filter driver
+refer to the worktree file instead, and respond with the path of a file.
+This would be similar to my old patch set for the old interface.
+"""]]

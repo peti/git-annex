@@ -1,0 +1,31 @@
+### Please describe the problem.
+
+git-annex can't compile on FreeBSD; specifically, the build fails while satisfying dependencies.
+
+### What steps will reproduce the problem?
+
+1. git clone git://git-annex.branchable.com/ git-annex
+2. cd git-annex
+3. cabal install -j -f-assistant -webapp -webdav -pairing -xmpp -dns -dbus -magicmime --only-dependencies
+
+### What version of git-annex are you using? On what operating system?
+
+git-annex HEAD.
+
+FreeBSD 11.1-RELEASE r321309 GENERIC amd64
+
+### Please provide any additional information below.
+
+The full log is available at [https://gitlab.com/snippets/1743708](https://gitlab.com/snippets/1743708).  Summary below:
+
+    cabal: Error: some packages failed to install:
+    esqueleto-2.5.3-J2ccnERt7unG9UdXfc7jAa depends on esqueleto-2.5.3 which failed to install.
+    persistent-2.7.0-IWtmEvQAI3yHscMZvQrE6P failed during the building phase. The exception was: ExitFailure 1
+    persistent-sqlite-2.6.4-3aF88LYjPwqbsHGVQ1VUp depends on
+    persistent-sqlite-2.6.4 which failed to install.
+    persistent-template-2.5.4-2tn9hCQqx2e2mAPIKgHBFO depends on
+    persistent-template-2.5.4 which failed to install.
+
+### Have you had any luck using git-annex before? (Sometimes we get tired of reading bug reports all day and a lil' positive end note does wonders)
+
+No, I'm afraid.  But it looks really good!  I'm trying to use it to add a bunch of high-res images to my Jeykll website, all managed through Git, with the images stored in S3.

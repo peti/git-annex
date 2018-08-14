@@ -1,0 +1,10 @@
+[[!comment format=mdwn
+ username="Mara"
+ avatar="http://cdn.libravatar.org/avatar/9b8abe5a5b0a41b88fc9970a88c2e317"
+ subject="Also with embedcreds=yes"
+ date="2018-08-13T12:28:09Z"
+ content="""
+Also with `public=no` but `embedcreds=yes`.
+
+It can be useful to embed read-only credentials, but allow users to easily add/store their own credentials (locally) with write-access.
+"""]]

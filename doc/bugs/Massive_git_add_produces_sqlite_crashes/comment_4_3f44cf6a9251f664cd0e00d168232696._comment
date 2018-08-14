@@ -1,0 +1,12 @@
+[[!comment format=mdwn
+ username="webanck"
+ avatar="http://cdn.libravatar.org/avatar/cd273f76ef8c4218510b4f50ef7e1f3d"
+ subject="Similar issue again"
+ date="2018-08-13T14:18:17Z"
+ content="""
+Hello, it has been a while since I posted here about this issue with sqlite but it keeps following me! I randomly get errors while trying to lock files: 
+```sqlite worker thread crashed: SQLite3 returned ErrorIO while attempting to perform prepare \"SELECT null from content limit 1\": disk I/O error```
+
+Should I worry about the state of my hard drive? And I don't know if it is intended, but when this happens, the process doesn't stop with a failure code, it just freezes.
+I checked with top, and git-annex seems to continue doing stuff as it is still using a full core.
+"""]]

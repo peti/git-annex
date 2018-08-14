@@ -1,0 +1,32 @@
+[[!comment format=mdwn
+ username="joey"
+ subject="""comment 1"""
+ date="2018-08-14T14:50:51Z"
+ content="""
+You can use `git annex setpresentkey` to tell git-annex that a remote with
+a given uuid contains a given content.
+
+For example, if the proxy remote is named proxy
+and you know it contains all annexed files in the current directory
+and below, you could run this to tell git-annex that the proxy contains
+all the files it thought it didn't contain:
+
+	uuid=$(git config remote.proxy.annex-uuid)
+	git annex find --not --in proxy --format "\${key} $uuid 1\n" | \
+		git annex setpresentkey --batch
+
+There will be some problems using this empty proxy remote, eg if you
+run `git annex move somefile --from proxy`, git-annex will try to
+delete the content from it, see the content is not there, and update its
+location tracking to say that the proxy does not contain the content any
+longer. `git annex fsck --from proxy` will do similar so you'll need to
+avoid it.
+
+And, you'll probably want to use `git annex trust proxy` so that `git-annex
+drop` assumes it contains the content you said it has; by default git-annex
+will double-check and that check will fail.
+
+To avoid all these kind of issues with the proxy, a better approach might
+be to make a custom special remote that actually accesses the data on the
+tape drive. See [[special remote implementation howto|special_remotes/external]]
+"""]]

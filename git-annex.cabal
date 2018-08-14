@@ -848,8 +848,6 @@ Executable git-annex
     Git.LsTree
     Git.Merge
     Git.Objects
-    Git.Protocol.LongRunningProcess
-    Git.Protocol.PktLine
     Git.Queue
     Git.Ref
     Git.RefLog

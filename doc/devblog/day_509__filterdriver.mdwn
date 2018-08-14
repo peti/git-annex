@@ -1,0 +1,16 @@
+Working on a "filterdriver" branch, I've implemented support for the
+long-running smudge/clean process interface.
+
+It works, but not really any better than the old smudge/clean interface.
+Unfortunately git leaks memory just as badly in the new interface as it did
+in the old interface when sending large data to the smudge filter. Also,
+the new interface requires that the clean filter read all the content of the
+file from git, even when it's just going to look at the file on disk, so
+that's worse performance.
+
+So, I don't think I'll be merging that branch yet, but git's interface does
+support adding capabilities, and perhaps a capability could be added that
+avoids it schlepping the file content over the pipe. Same as my old git
+patches tried to do with the old smudge/clean interface.
+
+This work is supported by the NSF-funded DataLad project.
