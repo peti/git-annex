@@ -3,3 +3,28 @@ commands supporting --to and --from. And since there will be a [Remote]
 list, could also support --to foo --to bar etc.
 
 --[[Joey]]
+
+Started working on this in multifromto branch.
+
+Problem: Command.Move uses onlyActionOn, so only allows one remote to
+process a key at a time. Seems that onlyActionOn needs to be expanded to
+include the remote.
+
+Problem: The concurrency is not right yet. For example,
+`git-annex copy --to foo --to bar -J2` will start actions copying a
+file to both remotes. Assume the copy to bar finishes first.
+Then it will start an action copying the next file to foo, despite a
+copy to foo already running. 
+
+To fix this, it would help to look at Annex.activeremotes when starting the
+next action. If foo is busy, start the action on bar instead. It would
+be possible to build up a queue of actions that have not yet been started on
+a remote. That risks using a lot of memory if one remote is very slow.
+The queue would need to be capped at some amount, and when full,
+delay until the laggard remotes catches up.
+
+Also worth noting that with --auto and -J, git-annex may make more transfers
+than preferred content settings demand, because it will start several
+transfers to different remotes at once. If only one copy is needed
+amoung all the remotes, it won't notice and a copy will be sent to all
+remotes. I think this is something the user can understand though?
