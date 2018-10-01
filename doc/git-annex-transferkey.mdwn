@@ -4,7 +4,7 @@ git-annex transferkey - transfers a key from or to a remote
 
 # SYNOPSIS
 
-git annex transferkey `key [--from=remote|--to=remote]`
+git annex transferkey `key [--from=remote ... |--to=remote ...]`
 
 # DESCRIPTION
 

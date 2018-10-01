@@ -119,18 +119,16 @@ parseRemoteOption = DeferredParse
 	. Just
 
 -- | From or To a remote.
-data FromToOptions
-	= FromRemote (DeferredParse Remote)
-	| ToRemote (DeferredParse Remote)
+data FromToOptions r = From r | To r
 
-instance DeferredParseClass FromToOptions where
-	finishParse (FromRemote v) = FromRemote <$> finishParse v
-	finishParse (ToRemote v) = ToRemote <$> finishParse v
+instance DeferredParseClass (FromToOptions [DeferredParse r]) where
+	finishParse (From l) = From <$> finishParse l
+	finishParse (To l) = To <$> finishParse l
 
-parseFromToOptions :: Parser FromToOptions
+parseFromToOptions :: Parser (FromToOptions [DeferredParse Remote])
 parseFromToOptions = 
-	(FromRemote . parseRemoteOption <$> parseFromOption) 
-	<|> (ToRemote . parseRemoteOption <$> parseToOption)
+	(From . map parseRemoteOption <$> some parseFromOption) 
+	<|> (To . map parseRemoteOption <$> some parseToOption)
 
 parseFromOption :: Parser RemoteName
 parseFromOption = strOption
@@ -147,21 +145,25 @@ parseToOption = strOption
 	)
 
 -- | Like FromToOptions, but with a special --to=here
-type FromToHereOptions = Either ToHere FromToOptions
+type FromToHereOptions r = Either ToHere (FromToOptions r)
 
 data ToHere = ToHere
 
-parseFromToHereOptions :: Parser FromToHereOptions
+parseFromToHereOptions :: Parser (FromToHereOptions [DeferredParse Remote])
 parseFromToHereOptions = parsefrom <|> parseto
   where
-	parsefrom = Right . FromRemote . parseRemoteOption <$> parseFromOption
-	parseto = herespecialcase <$> parseToOption
+	parsefrom = Right . From . map parseRemoteOption <$> some parseFromOption
+	parseto = herespecialcase <$> some parseToOption
 	  where
-		herespecialcase "here" = Left ToHere
-		herespecialcase "." = Left ToHere
-		herespecialcase n = Right $ ToRemote $ parseRemoteOption n
+		herespecialcase l
+			| any ishere l && all ishere l = Left ToHere
+			| any ishere l = fail "Cannot mix --to=here with --to=remote"
+			| otherwise = Right $ To $ map parseRemoteOption l
+		ishere "here" = True
+		ishere "." = True
+		ishere _ = False
 
-instance DeferredParseClass FromToHereOptions where
+instance DeferredParseClass (FromToHereOptions [DeferredParse r]) where
 	finishParse = either (pure . Left) (Right <$$> finishParse)
 
 -- Options for acting on keys, rather than work tree files.

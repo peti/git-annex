@@ -28,7 +28,7 @@ cmd = withGlobalOptions [jobsOption, jsonOptions, jsonProgressOption, annexedMat
 
 data MoveOptions = MoveOptions
 	{ moveFiles :: CmdParams
-	, fromToOptions :: FromToHereOptions
+	, fromToOptions :: FromToHereOptions [DeferredParse Remote]
 	, removeWhen :: RemoveWhen
 	, keyOptions :: Maybe KeyOptions
 	, batchOption :: BatchMode
@@ -54,34 +54,42 @@ data RemoveWhen = RemoveSafe | RemoveNever
 	deriving (Show, Eq)
 
 seek :: MoveOptions -> CommandSeek
-seek o = allowConcurrentOutput $ do
-	let go = whenAnnexed $ start (fromToOptions o) (removeWhen o)
+seek o = allowConcurrentOutput $
 	case batchOption o of
-		Batch fmt -> batchFilesMatching fmt go
+		Batch fmt -> batchFilesMatching fmt $ \f -> seekremotes' $ \r -> go r f
 		NoBatch -> withKeyOptions (keyOptions o) False
-			(commandAction . startKey (fromToOptions o) (removeWhen o))
-			(withFilesInGit (commandAction . go))
+			(\kai -> seekremotes $ \r -> commandAction $ startKey r (removeWhen o) kai)
+			(withFilesInGit $ \f -> seekremotes $ \r -> commandAction $ go r f)
 			=<< workTreeItems (moveFiles o)
+  where
+	go r = whenAnnexed $ start r (removeWhen o)
 
-start :: FromToHereOptions -> RemoveWhen -> FilePath -> Key -> CommandStart
+	seekremotes :: (FromToHereOptions Remote -> Annex ()) -> Annex ()
+	seekremotes a = case fromToOptions o of
+		Right (From rs) -> mapM_ (a . Right . From) =<< mapM getParsed rs
+		Right (To rs) -> mapM_ (a . Right . To) =<< mapM getParsed rs
+		Left ToHere -> a $ Left ToHere
+	seekremotes' = undefined
+
+start :: FromToHereOptions Remote -> RemoveWhen -> FilePath -> Key -> CommandStart
 start fromto removewhen f k =
 	start' fromto removewhen afile k (mkActionItem afile)
   where
 	afile = AssociatedFile (Just f)
 
-startKey :: FromToHereOptions -> RemoveWhen -> (Key, ActionItem) -> CommandStart
+startKey :: FromToHereOptions Remote -> RemoveWhen -> (Key, ActionItem) -> CommandStart
 startKey fromto removewhen = 
 	uncurry $ start' fromto removewhen (AssociatedFile Nothing)
 
-start' :: FromToHereOptions -> RemoveWhen -> AssociatedFile -> Key -> ActionItem -> CommandStart
+start' :: FromToHereOptions Remote -> RemoveWhen -> AssociatedFile -> Key -> ActionItem -> CommandStart
 start' fromto removewhen afile key ai = onlyActionOn key $
 	case fromto of
-		Right (FromRemote src) ->
+		Right (From src) ->
 			checkFailedTransferDirection ai Download $
-				fromStart removewhen afile key ai =<< getParsed src
-		Right (ToRemote dest) ->
+				fromStart removewhen afile key ai src
+		Right (To dest) ->
 			checkFailedTransferDirection ai Upload $
-				toStart removewhen afile key ai =<< getParsed dest
+				toStart removewhen afile key ai dest
 		Left ToHere ->
 			checkFailedTransferDirection ai Download $
 				toHereStart removewhen afile key ai

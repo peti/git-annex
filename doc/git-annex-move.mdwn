@@ -4,7 +4,7 @@ git-annex move - move content of files to/from another repository
 
 # SYNOPSIS
 
-git annex move `[path ...] [--from=remote|--to=remote|--to=here]`
+git annex move `[path ...] [--from=remote ... |--to=remote ... |--to=here]`
 
 # DESCRIPTION
 
@@ -16,9 +16,15 @@ Moves the content of files from or to another remote.
 
   Move the content of files from the specified remote to the local repository.
 
+  Can be specified multiple times to move from multiple remotes, and when
+  the --jobs option is used, will download from the remotes in parallel.
+
 * `--to=remote`
 
   Move the content of files from the local repository to the specified remote.
+
+  Can be specified multiple times to move to multiple remotes, and when
+  the --jobs option is used, will upload to the remotes in parallel.
 
 * `--to=here`
 

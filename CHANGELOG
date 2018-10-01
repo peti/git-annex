@@ -1,5 +1,8 @@
 git-annex (6.20180927) UNRELEASED; urgency=medium
 
+  * Multiple --from and --to options can be used in a single command,
+    eg git annex copy -J2 --to foo --to bar will copy files to two remotes
+    at the same time.
   * sync: Warn when a remote's export is not updated to the current
     tree because export tracking is not configured.
 

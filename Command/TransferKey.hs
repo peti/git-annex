@@ -22,7 +22,7 @@ cmd = noCommit $
 
 data TransferKeyOptions = TransferKeyOptions
 	{ keyOptions :: CmdParams 
-	, fromToOptions :: FromToOptions
+	, fromToOptions :: FromToOptions [DeferredParse Remote]
 	, fileOption :: AssociatedFile
 	}
 
@@ -42,26 +42,27 @@ instance DeferredParseClass TransferKeyOptions where
 		<*> pure (fileOption v)
 
 seek :: TransferKeyOptions -> CommandSeek
-seek o = withKeys (commandAction . start o) (keyOptions o)
+seek o = withKeys go (keyOptions o)
+  where
+	go k = case fromToOptions o of
+		To dest -> commandActions =<<
+			(map (toStart k (fileOption o)) <$> mapM getParsed dest)
+		From src -> commandActions =<<
+			(map (fromStart k (fileOption o)) <$> mapM getParsed src)
 
-start :: TransferKeyOptions -> Key -> CommandStart
-start o key = case fromToOptions o of
-	ToRemote dest -> next $ toPerform key (fileOption o) =<< getParsed dest
-	FromRemote src -> next $ fromPerform key (fileOption o) =<< getParsed src
-
-toPerform :: Key -> AssociatedFile -> Remote -> CommandPerform
-toPerform key file remote = go Upload file $
+toStart :: Key -> AssociatedFile -> Remote -> CommandStart
+toStart key file remote = next $ perform Upload file $
 	upload (uuid remote) key file stdRetry $ \p -> do
 		ok <- Remote.storeKey remote key file p
 		when ok $
 			Remote.logStatus remote key InfoPresent
 		return ok
 
-fromPerform :: Key -> AssociatedFile -> Remote -> CommandPerform
-fromPerform key file remote = go Upload file $
+fromStart :: Key -> AssociatedFile -> Remote -> CommandStart
+fromStart key file remote = next $ perform Upload file $
 	download (uuid remote) key file stdRetry $ \p ->
 		getViaTmp (retrievalSecurityPolicy remote) (RemoteVerify remote) key $ 
 			\t -> Remote.retrieveKeyFile remote key file t p
 
-go :: Direction -> AssociatedFile -> (NotifyWitness -> Annex Bool) -> CommandPerform
-go direction file a = notifyTransfer direction file a >>= liftIO . exitBool
+perform :: Direction -> AssociatedFile -> (NotifyWitness -> Annex Bool) -> CommandPerform
+perform direction file a = notifyTransfer direction file a >>= liftIO . exitBool
