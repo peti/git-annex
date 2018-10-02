@@ -1,0 +1,120 @@
+### Please describe the problem.
+
+Our http://datasets.datalad.org has been providing git annex repos, some of which with the content, via a "dummy" HTTP support of git.  For various reasons (performance, progress reporting by git upon clone) we want to switch to use [Smart HTTP](https://git-scm.com/book/en/v2/Git-on-the-Server-Smart-HTTP) git-http-backend  backend.  Sample deployment is at http://datasets-dev.datalad.org/.
+I followed the docs to set it up and only added one more configuration tune up
+
+
+```
+ RewriteEngine On
+
+ RewriteCond  "%{HTTP_USER_AGENT}"  "(git)"
+
+ RewriteRule ^(.*)$ "/git/$1" [PT]
+```
+
+so that people could still browse the website in the browser, but whenever `git` tries to access it, we direct to the `git-http-backend` CGI serving under `/git/` prefix (`ScriptAlias /git/ /usr/lib/git-core/git-http-backend/`).
+
+Everything seems to work nicely on git side, BUT I am having difficulty to make git-annex being able to serve annexed files from it:
+ 
+### What version of git-annex are you using? On what operating system?
+
+6.20180913+git149-g23bd27773-1~ndall+1
+
+
+### Please provide any additional information below.
+
+[[!format sh """
+$> builtin cd /tmp/; rm -rf raiders; git clone http://datasets-dev.datalad.org/labs/haxby/raiders/ ; cd raiders; git annex get sub-rid000005/anat/sub-rid000005_run-01_T1w_defacemask.nii.gz                                                                                                                          Cloning into 'raiders'...                
+remote: Counting objects: 17926, done.
+remote: Compressing objects: 100% (7203/7203), done.
+remote: Total 17926 (delta 7356), reused 15517 (delta 6237)
+Receiving objects: 100% (17926/17926), 1.23 MiB | 6.53 MiB/s, done.
+Resolving deltas: 100% (7356/7356), done.
+README.md                 masks/       stimulus/       sub-rid000014/  sub-rid000028/  sub-rid000038/  task-raiders_bold.json
+dataset_description.json  scripts/     sub-rid000005/  sub-rid000015/  sub-rid000029/  sub-rid000042/
+derivatives/              sourcedata/  sub-rid000011/  sub-rid000020/  sub-rid000033/  sub-rid000043/
+(merging origin/git-annex into git-annex...)
+(recording state in git...)
+get sub-rid000005/anat/sub-rid000005_run-01_T1w_defacemask.nii.gz download failed: Not Found
+
+  Remote origin not usable by git-annex; setting annex-ignore
+(not available) 
+  Try making some of these repositories available:
+  	41e5039d-1750-43d2-8bea-89897d969326 -- /mnt/datasets/datalad/crawl/labs/haxby/raiders
+   	87d7db62-683d-43b2-b594-baeb420ae7a6 -- .
+   	afde6679-1f2f-41f2-935a-93e7e3d70274 -- nastase@head1:~/BIDS/haxby/raiders
+   	de53ce43-2c07-4971-8de8-0445c596f7dc -- datalad-public-ro
+
+  (Note that these git remotes have annex-ignore set: origin)
+failed
+(recording state in git...)
+git-annex: get: 1 failed
+"""]]
+
+fails because `config` file is under `.git/` subdirectory there and git-annex doesn't try to access it at all to deduce the uuid, thus marking origin as annex-ignore.
+
+But if I add that `.git` suffix to the url, then:
+
+[[!format sh """
+(git)hopa:/tmp/raiders[master]
+$> builtin cd /tmp/; rm -rf raiders; git clone http://datasets-dev.datalad.org/labs/haxby/raiders/.git/ ; cd raiders; git annex get sub-rid000005/anat/sub-rid000005_run-01_T1w_defacemask.nii.gz                                                                 
+Cloning into 'raiders'...
+remote: Counting objects: 17926, done.
+remote: Compressing objects: 100% (7203/7203), done.
+remote: Total 17926 (delta 7356), reused 15517 (delta 6237)
+Receiving objects: 100% (17926/17926), 1.23 MiB | 5.08 MiB/s, done.
+Resolving deltas: 100% (7356/7356), done.
+README.md                 masks/       stimulus/       sub-rid000014/  sub-rid000028/  sub-rid000038/  task-raiders_bold.json
+dataset_description.json  scripts/     sub-rid000005/  sub-rid000015/  sub-rid000029/  sub-rid000042/
+derivatives/              sourcedata/  sub-rid000011/  sub-rid000020/  sub-rid000033/  sub-rid000043/
+(merging origin/git-annex into git-annex...)
+(recording state in git...)
+get sub-rid000005/anat/sub-rid000005_run-01_T1w_defacemask.nii.gz (from origin...) 
+download failed: Not Found
+download failed: Not Found
+
+  Unable to access these remotes: origin
+
+  Try making some of these repositories available:
+  	41e5039d-1750-43d2-8bea-89897d969326 -- /mnt/datasets/datalad/crawl/labs/haxby/raiders
+   	87d7db62-683d-43b2-b594-baeb420ae7a6 -- .
+   	afde6679-1f2f-41f2-935a-93e7e3d70274 -- nastase@head1:~/BIDS/haxby/raiders
+   	de53ce43-2c07-4971-8de8-0445c596f7dc -- datalad-public-ro [origin]
+failed
+(recording state in git...)
+git-annex: get: 1 failed
+"""]]
+because it fails to find those two files under `.git/annex/objects`, here is apache log file
+
+
+```
+10.31.191.134 - - [01/Oct/2018:13:01:58 -0400] "GET /labs/haxby/raiders/.git//config HTTP/1.1" 206 501 "-" "-"
+
+10.31.191.134 - - [01/Oct/2018:13:01:58 -0400] "GET /labs/haxby/raiders/.git//annex/objects/Z8/f1/MD5E-s41438--06c245e709e7d40a90ed48c6c3b58295.nii.gz/MD5E-s41438--06c245e709e7d40a90ed48c6c3b58295.nii.gz HTTP/1.1" 404 243 "-" "git-annex/6.20180913+git149-g23bd27773-1~ndall+1"
+
+10.31.191.134 - - [01/Oct/2018:13:01:58 -0400] "GET /labs/haxby/raiders/.git//annex/objects/681/5d0/MD5E-s41438--06c245e709e7d40a90ed48c6c3b58295.nii.gz/MD5E-s41438--06c245e709e7d40a90ed48c6c3b58295.nii.gz HTTP/1.1" 404 243 "-" "git-annex/6.20180913+git149-g23bd27773-1~ndall+1"
+```
+
+where it seems to assume different layout:
+
+[[!format sh """
+$> ls -dl $webroot//labs/haxby/raiders/.git/annex/objects/*/*/MD5E-s41438--06c245e709e7d40a90ed48c6c3b58295.nii.gz
+drwxrwsr-x 1 yoh datalad 104 Sep 26  2016 /mnt/btrfs/manual-snapshots/srv-20180928/datasets.datalad.org/www///labs/haxby/raiders/.git/annex/objects/Z8/f1/MD5E-s41438--06c245e709e7d40a90ed48c6c3b58295.nii.gz/
+"""]]
+
+
+which git-annex assumes when working with the dummy HTTP:
+
+```
+10.31.191.134 - - [01/Oct/2018:13:09:53 -0400] "GET /labs/haxby/raiders/.git//config HTTP/1.1" 206 501 "-" "-"
+
+10.31.191.134 - - [01/Oct/2018:13:09:53 -0400] "GET /labs/haxby/raiders/.git//annex/objects/Z8/f1/MD5E-s41438--06c245e709e7d40a90ed48c6c3b58295.nii.gz/MD5E-s41438--06c245e709e7d40a90ed48c6c3b58295.nii.gz HTTP/1.1" 200 41679 "-" "git-annex/6.20180913+git149-g23bd27773-1~ndall+1"
+```
+
+So I wonder if I need to do something on my end in configuring apache2, or something could/should be done on git-annex side?  Ideally I would like to be able to just clone them without specifying `.git/` suffix to the url.
+
+But also note that `git-annex` seems to not even provide any agent value while trying to access `config` file:
+
+```
+10.31.191.134 - - [01/Oct/2018:13:12:45 -0400] "GET /labs/haxby/raiders/.git//config HTTP/1.1" 206 501 "-" "-"
+```

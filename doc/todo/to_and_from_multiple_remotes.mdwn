@@ -23,8 +23,45 @@ a remote. That risks using a lot of memory if one remote is very slow.
 The queue would need to be capped at some amount, and when full,
 delay until the laggard remotes catches up.
 
+Bonus: git annex sync --content -J2 already works, but it has the same
+problem described above and ought to be able to be fixed the same way.
+
 Also worth noting that with --auto and -J, git-annex may make more transfers
 than preferred content settings demand, because it will start several
 transfers to different remotes at once. If only one copy is needed
 amoung all the remotes, it won't notice and a copy will be sent to all
 remotes. I think this is something the user can understand though?
+
+----
+
+Looking at commands that support --to and --from and what each should do,
+there is a lot of diversity.
+
+git annex move --to of course removes the local copy. So if moving to
+multiple remotes it would need to delay that removal until it's sent to all
+of them. And it really only ought to try to remove the local copy once
+at the end, not once per remote moved to.
+
+git annex move --from ought to spread the load amoung remotes with -Jn,
+and once a file is downloaded, it needs to try to remove it from all the
+remotes.
+
+git annex mirror --from mirrors one remote; mirroring from 
+multiple remotes does not really make any sense. mirror --to multiple
+could be done.
+
+git annex unused --from seems unlikely to make sense with multiple remotes,
+since it would result in a list of keys distributed amoung them, and what
+would be done with that? Perhaps a git annex drop --from multiple remotes,
+but that would be innefficient. A shell script looping over remotes makes
+more sense if the user wants to drop unused from multiple remotes.
+
+git annex get/fsck/copy/export/transferkey/drop/dropunused all make sense to
+support multiple remotes. But with -Jn the operations that get files behave
+differently than the operations that drop files. The gets want to balance
+load amoung the remotes, while the drops and uploads need to run each
+action over each remote.
+
+Seems two runners are needed with different concurrency behavior, one that
+balances the load amoung remotes, and one that runs the same action against
+multiple remotes concurrently.

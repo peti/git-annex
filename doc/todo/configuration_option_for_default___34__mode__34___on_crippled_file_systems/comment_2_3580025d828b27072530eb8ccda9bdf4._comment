@@ -1,0 +1,9 @@
+[[!comment format=mdwn
+ username="yarikoptic"
+ avatar="http://cdn.libravatar.org/avatar/f11e9c84cb18d26a1748c33b48c924b4"
+ subject="comment 2"
+ date="2018-10-01T16:29:19Z"
+ content="""
+I think that is correct.
+But isn't `annex init` is also indirectly invoked by any annex command, e.g. if I just do `git clone URL ; cd DIR; git annex get FILEs`?
+"""]]

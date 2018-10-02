@@ -1,0 +1,7 @@
+Started work on <http://git-annex.branchable.com/todo/to_and_from_multiple_remotes/>.
+It's going slow, I had to start with a large refactoring. So far, option
+parsing is working, and a few commands are almost working, but concurrency
+is not working right, and concurrency is the main reason to want to support
+this (along with remote groups).
+
+Today's work was supported by Jake Vosloo [on Patreon](https://patreon.com/joeyh).
