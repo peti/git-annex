@@ -26,6 +26,7 @@ banned_users:
 - avdhusingh6497@d72e8319bb7c179778775a8b096b120fc219fbad
 - marjor
 - Elina_Williams
+- RannyJohns
 # where the source of the wiki is located
 srcdir: /home/b-git-annex/source/doc
 # where to build the wiki
