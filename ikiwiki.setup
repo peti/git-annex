@@ -213,7 +213,7 @@ created: 1287531313
 # disable IPv6?
 ipv6_disabled: 0
 # redirect from http to https?
-redirect_to_https: 0
+redirect_to_https: 1
 # use Lets Encrypt to generate https certificate?
 use_letsencrypt: 1
 
