@@ -15,6 +15,7 @@ adminemail: admin@branchable.com
 adminuser:
 - http://joey.kitenet.net/
 - http://joeyh.name/
+- id@joeyh.name
 # users who are banned from the wiki
 banned_users:
 - https://domtheo.myopenid.com/
