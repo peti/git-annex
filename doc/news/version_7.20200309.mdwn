@@ -1,0 +1,4 @@
+git-annex 7.20200309 released with [[!toggle text="these changes"]]
+[[!toggleable text="""
+   * Fix regression that prevented external special remotes from using
+     GETCONFIG to query values like "name". (Introduced in version 7.20200202.7.)"""]]
