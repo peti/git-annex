@@ -130,7 +130,7 @@ send ups fs = do
 	starting "sending files" (ActionItemOther Nothing) $
 		withTmpFile "send" $ \t h -> do
 			let ww = WarnUnmatchLsFiles
-			fs' <- seekHelper ww LsFiles.inRepo
+			fs' <- seekHelper id ww LsFiles.inRepo
 				=<< workTreeItems ww fs
 			matcher <- Limit.getMatcher
 			let addlist f o = whenM (matcher $ MatchingFile $ FileInfo f f) $

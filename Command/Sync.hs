@@ -652,11 +652,11 @@ seekSyncContent o rs currbranch = do
 	liftIO $ not <$> isEmptyMVar mvar
   where
 	seekworktree mvar l bloomfeeder = 
-		seekHelper ww LsFiles.inRepo l
+		seekHelper id ww LsFiles.inRepo l
 			>>= gofiles bloomfeeder mvar
 
 	seekincludinghidden origbranch mvar l bloomfeeder = 
-		seekHelper ww (LsFiles.inRepoOrBranch origbranch) l 
+		seekHelper id ww (LsFiles.inRepoOrBranch origbranch) l 
 			>>= gofiles bloomfeeder mvar
 
 	ww = WarnUnmatchLsFiles

@@ -214,22 +214,23 @@ prop_relPathDirToFile_regressionTest = same_dir_shortcurcuits_at_difference
  - we stop preserving ordering at that point. Presumably a user passing
  - that many paths in doesn't care too much about order of the later ones.
  -}
-segmentPaths :: [RawFilePath] -> [RawFilePath] -> [[RawFilePath]]
-segmentPaths [] new = [new]
-segmentPaths [_] new = [new] -- optimisation
-segmentPaths (l:ls) new = found : segmentPaths ls rest
+segmentPaths :: (a -> RawFilePath) -> [RawFilePath] -> [a] -> [[a]]
+segmentPaths _ [] new = [new]
+segmentPaths _ [_] new = [new] -- optimisation
+segmentPaths c (l:ls) new = found : segmentPaths c ls rest
   where
 	(found, rest) = if length ls < 100
 		then partition inl new
 		else break (not . inl) new
-	inl f = fromRawFilePath l `dirContains` fromRawFilePath f
+	inl f = l' `dirContains` fromRawFilePath (c f)
+	l' = fromRawFilePath l
 
 {- This assumes that it's cheaper to call segmentPaths on the result,
  - than it would be to run the action separately with each path. In
  - the case of git file list commands, that assumption tends to hold.
  -}
-runSegmentPaths :: ([RawFilePath] -> IO [RawFilePath]) -> [RawFilePath] -> IO [[RawFilePath]]
-runSegmentPaths a paths = segmentPaths paths <$> a paths
+runSegmentPaths :: (a -> RawFilePath) -> ([RawFilePath] -> IO [a]) -> [RawFilePath] -> IO [[a]]
+runSegmentPaths c a paths = segmentPaths c paths <$> a paths
 
 {- Converts paths in the home directory to use ~/ -}
 relHome :: FilePath -> IO String
