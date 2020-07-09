@@ -21,6 +21,7 @@ module Git.CatFile (
 	catObjectDetails,
 	catObjectMetaData,
 	catObjectStream,
+	catObjectStream',
 ) where
 
 import System.IO
@@ -283,12 +284,8 @@ parseCommit b = Commit
 	lt = fromIntegral (ord '<')
 	gt = fromIntegral (ord '>')
 
-{- Uses cat-file to stream the contents of the files listed by lstree
- - as efficiently as possible. This is much faster than querying it
- - repeatedly per file.
- -
- - (Note that, while a more polymorphic version of this can be written,
- - this version is faster, possibly due to being less polymorphic.)
+{- Uses cat-file to stream the contents of the files as efficiently
+ - as possible. This is much faster than querying it repeatedly per file.
  -}
 catObjectStream
 	:: (MonadMask m, MonadIO m)
@@ -297,8 +294,8 @@ catObjectStream
 	-> Repo
 	-> (IO (Maybe (TopFilePath, Maybe L.ByteString)) -> m ())
 	-> m ()
-catObjectStream l want repo a = assertLocal repo $ do
-	bracketIO start stop $ \(mv, _, _, hout, _) -> a (reader mv hout)
+catObjectStream l want repo a = withCatObjectStream repo feeder $
+	\mv hout -> a (catObjectReader mv hout)
   where
 	feeder mv h = do
 		forM_ l $ \ti ->
@@ -309,19 +306,47 @@ catObjectStream l want repo a = assertLocal repo $ do
 				S8.hPutStrLn h (fromRef' sha)
 		hClose h
 
-	reader mv h = ifM (hIsEOF h)
-		( return Nothing
-		, do
-			(sha, f) <- liftIO $ atomically $ headTList mv
-			resp <- S8.hGetLine h
-			case parseResp sha resp of
-				Just r@(ParsedResp {}) -> do
-					content <- readObjectContent h r
-					return (Just (f, Just content))
-				Just DNE -> return (Just (f, Nothing))
-				Nothing -> error $ "unknown response from git cat-file " ++ show resp
-		)
+{- While this variant could be combined with catObjectStream into a 
+ - more polymorphic function, the specialization of both is important for
+ - performance. -}
+catObjectStream'
+	:: (MonadMask m, MonadIO m)
+	=> [(RawFilePath, Sha, FileMode)]
+	-> Repo
+	-> (IO (Maybe (RawFilePath, Maybe L.ByteString)) -> m ())
+	-> m ()
+catObjectStream' l repo a = withCatObjectStream repo feeder $
+	\mv hout -> a (catObjectReader mv hout)
+  where
+	feeder mv h = do
+		forM_ l $ \(f, sha, _) -> do
+			liftIO $ atomically $ snocTList mv (sha, f)
+			S8.hPutStrLn h (fromRef' sha)
+		hClose h
 
+catObjectReader :: TList (Ref, a) -> Handle -> IO (Maybe (a, Maybe L.ByteString))
+catObjectReader mv h = ifM (hIsEOF h)
+	( return Nothing
+	, do
+		(sha, f) <- liftIO $ atomically $ headTList mv
+		resp <- S8.hGetLine h
+		case parseResp sha resp of
+			Just r@(ParsedResp {}) -> do
+				content <- readObjectContent h r
+				return (Just (f, Just content))
+			Just DNE -> return (Just (f, Nothing))
+			Nothing -> error $ "unknown response from git cat-file " ++ show resp
+	)
+
+withCatObjectStream
+	:: (MonadMask m, MonadIO m)
+	=> Repo
+	-> (TList a -> Handle -> IO ())
+	-> (TList a -> Handle -> m ())
+	-> m ()
+withCatObjectStream repo feeder reader = assertLocal repo $
+	bracketIO start stop $ \(mv, _, _, hout, _) -> reader mv hout
+  where
 	params = 
 		[ Param "cat-file"
 		, Param ("--batch=" ++ batchFormat)
