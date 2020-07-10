@@ -1,6 +1,6 @@
 {- git ref stuff
  -
- - Copyright 2011-2019 Joey Hess <id@joeyh.name>
+ - Copyright 2011-2020 Joey Hess <id@joeyh.name>
  -
  - Licensed under the GNU AGPL version 3 or higher.
  -}
@@ -14,6 +14,7 @@ import Git
 import Git.Command
 import Git.Sha
 import Git.Types
+import Git.FilePath
 
 import Data.Char (chr, ord)
 import qualified Data.ByteString as S
@@ -68,7 +69,11 @@ branchRef = underBase "refs/heads"
  - of a repo.
  -}
 fileRef :: RawFilePath -> Ref
-fileRef f = Ref $ ":./" <> f
+fileRef f = Ref $ ":./" <> toInternalGitPath f
+
+{- A Ref that can be used to refer to a file in a particular branch. -}
+branchFileRef :: Branch -> RawFilePath -> Ref
+branchFileRef branch f = Ref $ fromRef' branch <> ":" <> toInternalGitPath f
 
 {- Converts a Ref to refer to the content of the Ref on a given date. -}
 dateRef :: Ref -> RefDate -> Ref
