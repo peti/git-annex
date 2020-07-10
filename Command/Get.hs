@@ -40,12 +40,13 @@ optParser desc = GetOptions
 seek :: GetOptions -> CommandSeek
 seek o = startConcurrency downloadStages $ do
 	from <- maybe (pure Nothing) (Just <$$> getParsed) (getFrom o)
-	let go = whenAnnexed $ start o from
+	let go = start o from
 	case batchOption o of
-		Batch fmt -> batchFilesMatching fmt (go . toRawFilePath)
+		Batch fmt -> batchFilesMatching fmt
+			(whenAnnexed go . toRawFilePath)
 		NoBatch -> withKeyOptions (keyOptions o) (autoMode o)
 			(commandAction . startKeys from)
-			(withFilesInGit ww (commandAction . go))
+			(withFilesInGitAnnex ww (\f k -> commandAction (go f k)))
 			=<< workTreeItems ww (getFiles o)
   where
 	ww = WarnUnmatchLsFiles

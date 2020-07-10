@@ -200,7 +200,7 @@ changeExport r db (PreferredFiltered new) = do
 	mapdiff a oldtreesha newtreesha = do
 		(diff, cleanup) <- inRepo $
 			Git.DiffTree.diffTreeRecursive oldtreesha newtreesha
-		seekActions $ pure $ map a diff
+		sequence_ $ map a diff
 		void $ liftIO cleanup
 
 -- Map of old and new filenames for each changed ExportKey in a diff.
