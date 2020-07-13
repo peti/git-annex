@@ -45,13 +45,14 @@ instance DeferredParseClass CopyOptions where
 
 seek :: CopyOptions -> CommandSeek
 seek o = startConcurrency commandStages $ do
-	let go = whenAnnexed $ start o
+	let go = start o
 	case batchOption o of
-		Batch fmt -> batchFilesMatching fmt (go . toRawFilePath)
+		Batch fmt -> batchFilesMatching fmt
+			(whenAnnexed go . toRawFilePath)
 		NoBatch -> withKeyOptions
 			(keyOptions o) (autoMode o)
 			(commandAction . Command.Move.startKey (fromToOptions o) Command.Move.RemoveNever)
-			(withFilesInGit ww $ commandAction . go)
+			(withFilesInGitAnnex ww $ \f k -> commandAction (go f k))
 			=<< workTreeItems ww (copyFiles o)
   where
 	ww = WarnUnmatchLsFiles
