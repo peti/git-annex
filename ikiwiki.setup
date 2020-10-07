@@ -144,7 +144,6 @@ timezone: GMT
 #exclude: ^(*\.private|Makefile)$
 # specifies the characters that are allowed in source filenames
 wiki_file_chars: -[:alnum:]+/._
-wiki_file_regexp: (^[-[:alnum:]+/._]+[:alnum:]$)
 # allow symlinks in the path leading to the srcdir (potentially insecure)
 allow_symlinks_before_srcdir: 0
 # cookie control
