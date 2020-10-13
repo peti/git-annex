@@ -5,6 +5,8 @@
  - Licensed under the GNU AGPL version 3 or higher.
  -}
 
+{-# LANGUAGE BangPatterns #-}
+
 module Git.LsFiles (
 	Options(..),
 	inRepo,
@@ -175,8 +177,8 @@ stagedDetails = stagedDetails' parseStagedDetails []
 
 stagedDetails' :: (S.ByteString -> Maybe t) -> [CommandParam] -> [RawFilePath] -> Repo -> IO ([t], IO Bool)
 stagedDetails' parser ps l repo = guardSafeForLsFiles repo $ do
-	(ls, cleanup) <- pipeNullSplit' params repo
-	return (mapMaybe parser ls, cleanup)
+	ls <- pipeNullSplit'' params repo
+	return (mapMaybe parser ls, return True)
   where
 	params = Param "ls-files" : Param "--stage" : Param "-z" : ps ++ 
 		Param "--" : map (File . fromRawFilePath) l
@@ -185,13 +187,13 @@ parseStagedDetails :: S.ByteString -> Maybe StagedDetails
 parseStagedDetails = eitherToMaybe . A.parseOnly parser
   where
 	parser = do
-		mode <- octal
+		!mode <- octal
 		void $ A8.char ' '
-		sha <- maybe (fail "bad sha") return . extractSha =<< nextword
+		!sha <- maybe (fail "bad sha") return . extractSha . S.copy =<< nextword
 		void $ A8.char ' '
-		stagenum <- A8.decimal
+		!stagenum <- A8.decimal
 		void $ A8.char '\t'
-		file <- A.takeByteString
+		!file <- S.copy <$> A.takeByteString
 		return (file, sha, mode, stagenum)
 	
 	nextword = A8.takeTill (== ' ')

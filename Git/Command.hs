@@ -16,6 +16,9 @@ import qualified Utility.CoProcess as CoProcess
 
 import qualified Data.ByteString.Lazy as L
 import qualified Data.ByteString as S
+import Data.IORef
+import qualified Data.DList as DL
+import System.IO.Unsafe (unsafeInterleaveIO)
 
 {- Constructs a git command line operating on the specified repo. -}
 gitCommandLine :: [CommandParam] -> Repo -> [CommandParam]
@@ -128,6 +131,55 @@ pipeNullSplit' :: [CommandParam] -> Repo -> IO ([S.ByteString], IO Bool)
 pipeNullSplit' params repo = do
 	(s, cleanup) <- pipeNullSplit params repo
 	return (map L.toStrict s, cleanup)
+
+pipeNullSplit'' :: [CommandParam] -> Repo -> IO [S.ByteString]
+pipeNullSplit'' params repo = do
+	getchunk <- pipeNullChunks params repo
+	go getchunk DL.empty
+  where
+	go getchunk l = unsafeInterleaveIO getchunk >>= \case
+		Just c -> go getchunk (DL.cons c l)
+		Nothing -> return (DL.toList l)
+
+{- Returns an action that reads the next null terminated chunk of the
+ - command's output, or Nothing at EOF. -}
+pipeNullChunks :: [CommandParam] -> Repo -> IO (IO (Maybe S.ByteString))
+pipeNullChunks params repo = do
+	(_, Just h, _, pid) <- createProcess p { std_out = CreatePipe }
+	bv <- newIORef []
+	return (getchunk pid bv h)
+  where
+	p  = gitCreateProcess params repo
+
+	-- Larger than the typical git output chunk, but not so large
+	-- that it will be a problem for part of it to remain
+	-- in memory while proccessing the rest of it.
+	maxsz = 1024
+
+	getchunk pid bv h = readIORef bv >>= \case
+		(prev:[]) -> continuechunk pid bv h prev
+		(c:cs) -> do
+			writeIORef bv cs
+			return (Just c)
+		[] -> continuechunk pid bv h S.empty
+
+	continuechunk pid bv h prev = do
+		s <- S.hGetSome h maxsz
+		case S.split 0 s of
+			(c:[]) ->
+				-- Chunk is still incomplete.
+				continuechunk pid bv h (prev <> c)
+			(c:rest) -> do
+				writeIORef bv (filter (not . S.null) rest)
+				return (Just (S.copy (prev <> c)))
+			[] -> do
+				-- Empty read; at EOF.
+				void $ checkSuccessProcess pid
+				-- Make subsequent calls return Nothing
+				-- to indicate EOF to the caller, if this
+				-- call does not.
+				writeIORef bv []
+				return (if S.null prev then Nothing else Just prev)
 
 pipeNullSplitStrict :: [CommandParam] -> Repo -> IO [S.ByteString]
 pipeNullSplitStrict params repo = do
